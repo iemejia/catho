@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
 import sys
 import os
 import sqlite3
@@ -11,6 +9,7 @@ from datetime import datetime
 import time
 import glob
 import hashlib
+import logging
 
 from utils import get_file_info
 
@@ -18,6 +17,18 @@ home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
 catho_extension = '.db'
 catalogs = []
+
+# import logging.config
+# logging.config.fileConfig('logging.conf')
+
+# create logger
+logger = logging.getLogger('catho')
+logger.setLevel(logging.DEBUG)
+
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+logger.addHandler(ch)
 
 def touch_catho_dir():
     if not os.path.exists(catho_path):
@@ -38,7 +49,7 @@ def create_metadata(name, path):
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
-        print("An error occurred:", e.args[0])
+        logger.error("An error occurred:", e.args[0])
 
 def create_catalog(name, files):
     try:
@@ -52,7 +63,7 @@ def create_catalog(name, files):
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
-        print("An error occurred:", e.args[0])
+        logger.error("An error occurred:", e.args[0])
 
 def update_catalogs_list():
     touch_catho_dir()
@@ -78,7 +89,7 @@ def create_db(name, path, files):
 
 if __name__ == '__main__':
     start()
-    # print(sys.argv)
+    # logger.debug(sys.argv)
 
     #if len(sys.argv) != 4:
     #    sys.exit(1)
@@ -93,7 +104,7 @@ if __name__ == '__main__':
         orig_path = sys.argv[3]
 
         # if not name:
-        #     print(noname)
+        #     logger.debug(noname)
         # todo verify stat gives the same value in windows
         files = []    
         for dirname, dirnames, filenames in os.walk(orig_path):
@@ -104,11 +115,11 @@ if __name__ == '__main__':
                     size, date = get_file_info(dirname, filename)
                     files.append((filename, date, size, path))
                 except OSError as oe:
-                    print("An error occurred:", oe)
+                    logger.error("An error occurred:", oe)
                 except UnicodeDecodeError as ue:
-                    print("An error occurred:", ue)
+                    logger.error("An error occurred:", ue)
 
-        # print(files)
+        # logger.debug(files)
         create_db(name, os.path.abspath(orig_path), files)
 
     elif (cmd == 'ls'):
@@ -116,9 +127,9 @@ if __name__ == '__main__':
         if not cats:
             for catalog, size, timestamp in catalogs:
                 date = datetime.fromtimestamp(timestamp)
-                print('{: >0} {: >15} {: >15}'.format(*(catalog, size, str(date))))
+                logger.info('{: >0} {: >15} {: >15}'.format(*(catalog, size, str(date))))
         else:
-            print("TODO: Print catalog info")
+            logger.debug("TODO: Print catalog info")
             # pass
             
     elif (cmd == 'rm'):
@@ -128,9 +139,9 @@ if __name__ == '__main__':
         for f in filelist:
             try:
                 os.remove(f)
-                print("rm", f)
+                logger.info("rm", f)
             except OSError:
-                print("rm: %s: No such file or directory" % f)
+                logger.error("rm: %s: No such file or directory" % f)
 
     elif (cmd == 'find'):
-        print("TODO find")
+        logger.error("TODO find")
