@@ -50,8 +50,8 @@ if __name__ == '__main__':
     cmd = sys.argv[1]
 
     if (cmd == 'add'):
-        path = sys.argv[2]
-        name = sys.argv[3]
+        name = sys.argv[2]
+        path = sys.argv[3]
         # if not name:
         #     print(noname)
         # todo verify stat gives the same value in windows
