@@ -1,12 +1,9 @@
-# haskell specific
-
-dist
-cabal-dev
-*.o
-*.hi
-*.chi
-*.chs.h
-.virthualenv
+# python
+*.py[cod]
 
 # Mac OS X
 .DS_Store
+
+# project specific
+*.gz
+*.db

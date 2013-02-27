@@ -4,7 +4,8 @@ README
 Catho is a catalog utility inspired by the awesome Robert Vasicek's 
 [http://www.mtg.sk/rva/](Cathy) project.
 
-Or put in other words, it's my excuse to hack some haskell.
+Or put in other words, it's my excuse to hack some python. Yes, yes I
+promised to do it in haskell, but i don't have time now :P
 
 Installation
 ----------
@@ -56,5 +57,5 @@ or
     cabal build
 
 Catalogs are automatically added to the .catho directory, and
-correspond to gzippped sqlite3 databases, for more info about catalogs
+correspond to sqlite3 databases, for more info about catalogs
 see the catalog.sql file.

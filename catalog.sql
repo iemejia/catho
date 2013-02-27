@@ -26,7 +26,6 @@ INSERT INTO METADATA VALUES('version', 1);
 -- date includes time and is represented in unix time > (1970)
 -- length file length in bytes
 -- path original path
--- parent direct parent id (if it's a root directory it should be itself)
 -- hash is optional for complete indexing
-CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT, date INT, length INT, path TEXT, parent INT, hash TEXT);
+CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);
 
