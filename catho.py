@@ -7,22 +7,23 @@ import sys
 import os
 import sqlite3
 import argparse # still not used
-import datetime
+#import datetime
+from datetime import datetime
 import time
 
-from utils import get_file_size
+from utils import get_file_info
 
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
 catalogs = []
 
-def check_catho_dir():
+def touch_catho_dir():
     if not os.path.exists(catho_path):
         os.makedirs(catho_path)
 
 def create_metadata(name):
     try:
-        check_catho_dir()
+        touch_catho_dir()
         conn = sqlite3.connect(catho_path + name + '.db')
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
@@ -38,7 +39,7 @@ def create_metadata(name):
 
 def create_catalog(name, files):
     try:
-        check_catho_dir()
+        touch_catho_dir()
         conn = sqlite3.connect(catho_path + name + '.db')
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
@@ -49,23 +50,30 @@ def create_catalog(name, files):
     except sqlite3.Error as e:
         print("An error occurred:", e.args[0])
 
-def list_catalogs():
-    check_catho_dir()
+def update_catalogs_list():
+    touch_catho_dir()
     files = os.listdir(catho_path)
 
     for filename in files:
         filename.endswith('.db')
-        size = get_file_size(catho_path, filename)
-        catalogs.append((filename[:-3], size))
+        size, date = get_file_info(catho_path, filename)
+        catalogs.append((filename[:-3], size, date))
 
-    for catalog, size in catalogs:
-        print('%s    %s' % (catalog, size))
+def load_catalogs():
+    pass
+
+
+def start():
+    touch_catho_dir()
+    update_catalogs_list()
+    load_catalogs()
 
 def create_db(name, files):
     create_metadata(name)
     create_catalog(name, files)
 
 if __name__ == '__main__':
+    start()
     # print(sys.argv)
 
     #if len(sys.argv) != 4:
@@ -84,10 +92,8 @@ if __name__ == '__main__':
             for filename in filenames:
                 try:
                     fullpath = os.path.join(dirname, filename)
-                    stat = os.stat(fullpath)
-                    date = long(stat.st_ctime)
-                    size = stat.st_size # in bytes
                     path = os.path.join(dirname) # path of the file
+                    size, date = get_file_info(dirname, filename)
                     files.append((filename.encode("utf-8"), date, size, path))
                 except OSError as oe:
                     print("An error occurred:", oe)
@@ -97,6 +103,7 @@ if __name__ == '__main__':
         # print(files)
         create_db(name, files)
 
-    elif (cmd == 'list'):
-        list_catalogs()
-
+    elif (cmd == 'ls'):
+        for catalog, size, timestamp in catalogs:
+            date = datetime.fromtimestamp(timestamp)
+            print('{: >15} {: >15} {: >15}'.format(*(catalog, size, str(date))))

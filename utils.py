@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function
+
+import os
+
+def get_file_info(basepath, filename):
+    """ Return the size and the date for a filename"""
+
+    fullpath = os.path.join(basepath, filename)
+    stat = os.stat(fullpath)
+    date = long(stat.st_ctime)
+    size = stat.st_size # in bytes
+    return size, date
