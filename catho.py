@@ -10,11 +10,13 @@ import argparse # still not used
 from datetime import datetime
 import time
 import glob
+import hashlib
 
 from utils import get_file_info
 
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
+catho_extension = '.db'
 catalogs = []
 
 def touch_catho_dir():
@@ -24,7 +26,7 @@ def touch_catho_dir():
 def create_metadata(name):
     try:
         touch_catho_dir()
-        conn = sqlite3.connect(catho_path + name + '.db')
+        conn = sqlite3.connect(catho_path + name + catho_extension)
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA(key TEXT, value TEXT);")
@@ -40,7 +42,7 @@ def create_metadata(name):
 def create_catalog(name, files):
     try:
         touch_catho_dir()
-        conn = sqlite3.connect(catho_path + name + '.db')
+        conn = sqlite3.connect(catho_path + name + catho_extension)
         conn.text_factory = str
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
@@ -56,7 +58,7 @@ def update_catalogs_list():
     files = os.listdir(catho_path)
 
     for filename in files:
-        filename.endswith('.db')
+        filename.endswith(catho_extension)
         size, date = get_file_info(catho_path, filename)
         catalogs.append((filename[:-3], size, date))
 
@@ -82,7 +84,10 @@ if __name__ == '__main__':
 
     cmd = sys.argv[1]
 
-    if (cmd == 'add'):
+    if (cmd == 'init'):
+        touch_catho_dir()
+
+    elif (cmd == 'add'):
         name = sys.argv[2]
         path = sys.argv[3]
         # if not name:
@@ -105,13 +110,18 @@ if __name__ == '__main__':
         create_db(name, files)
 
     elif (cmd == 'ls'):
-        for catalog, size, timestamp in catalogs:
-            date = datetime.fromtimestamp(timestamp)
-            print('{: >15} {: >15} {: >15}'.format(*(catalog, size, str(date))))
-
+        cats = sys.argv[2:]
+        if not cats:
+            for catalog, size, timestamp in catalogs:
+                date = datetime.fromtimestamp(timestamp)
+                print('{: >0} {: >15} {: >15}'.format(*(catalog, size, str(date))))
+        else:
+            print("TODO: Print catalog info")
+            # pass
+            
     elif (cmd == 'rm'):
         catalogs = sys.argv[2:]
-        filelist = [ glob.glob(catho_path + f + ".db") for f in catalogs ]
+        filelist = [ glob.glob(catho_path + f + catho_extension) for f in catalogs ]
         filelist = sum(filelist, [])
         for f in filelist:
             try:
@@ -119,3 +129,6 @@ if __name__ == '__main__':
                 print("rm", f)
             except OSError:
                 print("rm: %s: No such file or directory" % f)
+
+    elif (cmd == 'find'):
+        print("TODO find")

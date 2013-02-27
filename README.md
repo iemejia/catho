@@ -18,6 +18,10 @@ TODO
 
 Use
 ----------
+Prepare catalog folder
+
+    catho init
+
 Add a catalog with alias
 
     catho add name path  
