@@ -40,6 +40,10 @@ List all catalogs
 Find apparently existing files from dir in the catalog
 
     catho scan dir
+
+Import existing cathy catalogs to the catho format
+
+    catho import file
     
 Developing
 ----------
