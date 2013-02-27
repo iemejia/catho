@@ -10,17 +10,20 @@ import argparse # still not used
 import datetime
 import time
 
+from utils import get_file_size
+
 home = os.path.expanduser("~")
-cathoPath = home + "/.catho/"
+catho_path = home + "/.catho/"
+catalogs = []
 
-def checkCathoDir():
-    if not os.path.exists(cathoPath):
-        os.makedirs(cathoPath)
+def check_catho_dir():
+    if not os.path.exists(catho_path):
+        os.makedirs(catho_path)
 
-def createMetadata(name):
+def create_metadata(name):
     try:
-        checkCathoDir()
-        conn = sqlite3.connect(cathoPath + name + '.db')
+        check_catho_dir()
+        conn = sqlite3.connect(catho_path + name + '.db')
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA(key TEXT, value TEXT);")
@@ -33,10 +36,10 @@ def createMetadata(name):
     except sqlite3.Error as e:
         print("An error occurred:", e.args[0])
 
-def createCatalog(name, files):
+def create_catalog(name, files):
     try:
-        checkCathoDir()
-        conn = sqlite3.connect(cathoPath + name + '.db')
+        check_catho_dir()
+        conn = sqlite3.connect(catho_path + name + '.db')
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
         c.execute("CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
@@ -46,14 +49,27 @@ def createCatalog(name, files):
     except sqlite3.Error as e:
         print("An error occurred:", e.args[0])
 
-def createDb(name, files):
-    createMetadata(name)
-    createCatalog(name, files)
+def list_catalogs():
+    check_catho_dir()
+    files = os.listdir(catho_path)
+
+    for filename in files:
+        filename.endswith('.db')
+        size = get_file_size(catho_path, filename)
+        catalogs.append((filename[:-3], size))
+
+    for catalog, size in catalogs:
+        print('%s    %s' % (catalog, size))
+
+def create_db(name, files):
+    create_metadata(name)
+    create_catalog(name, files)
 
 if __name__ == '__main__':
     # print(sys.argv)
-    if len(sys.argv) != 4:
-        sys.exit(1)
+
+    #if len(sys.argv) != 4:
+    #    sys.exit(1)
 
     cmd = sys.argv[1]
 
@@ -79,5 +95,8 @@ if __name__ == '__main__':
                     print("An error occurred:", ue)
 
         # print(files)
-        createDb(name, files)
+        create_db(name, files)
+
+    elif (cmd == 'list'):
+        list_catalogs()
 
