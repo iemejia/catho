@@ -16,9 +16,10 @@ CREATE TABLE METADATA(key TEXT, value TEXT);
 -- optional key/values (some for performance reasons)
 -- lastcrc            #
 -- size               #
--- numdir             #
+-- numdir             # 
 -- numfiles           #
 -- hash type          # type of hash function included in the catalog, if it includes hashes, default=SHA-1
+-- notes              # eventual notes for extra info in the catalog
 
 INSERT INTO METADATA VALUES('version', 1);
 
