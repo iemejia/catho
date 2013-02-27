@@ -7,7 +7,6 @@ import sys
 import os
 import sqlite3
 import argparse # still not used
-#import datetime
 from datetime import datetime
 import time
 
@@ -41,6 +40,7 @@ def create_catalog(name, files):
     try:
         touch_catho_dir()
         conn = sqlite3.connect(catho_path + name + '.db')
+        conn.text_factory = str
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
         c.execute("CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
@@ -94,7 +94,7 @@ if __name__ == '__main__':
                     fullpath = os.path.join(dirname, filename)
                     path = os.path.join(dirname) # path of the file
                     size, date = get_file_info(dirname, filename)
-                    files.append((filename.encode("utf-8"), date, size, path))
+                    files.append((filename, date, size, path))
                 except OSError as oe:
                     print("An error occurred:", oe)
                 except UnicodeDecodeError as ue:
