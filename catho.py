@@ -9,6 +9,7 @@ import sqlite3
 import argparse # still not used
 from datetime import datetime
 import time
+import glob
 
 from utils import get_file_info
 
@@ -107,3 +108,14 @@ if __name__ == '__main__':
         for catalog, size, timestamp in catalogs:
             date = datetime.fromtimestamp(timestamp)
             print('{: >15} {: >15} {: >15}'.format(*(catalog, size, str(date))))
+
+    elif (cmd == 'rm'):
+        catalogs = sys.argv[2:]
+        filelist = [ glob.glob(catho_path + f + ".db") for f in catalogs ]
+        filelist = sum(filelist, [])
+        for f in filelist:
+            try:
+                os.remove(f)
+                print("rm", f)
+            except OSError:
+                print("rm: %s: No such file or directory" % f)
