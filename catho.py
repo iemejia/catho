@@ -23,7 +23,7 @@ def touch_catho_dir():
     if not os.path.exists(catho_path):
         os.makedirs(catho_path)
 
-def create_metadata(name):
+def create_metadata(name, path):
     try:
         touch_catho_dir()
         conn = sqlite3.connect(catho_path + name + catho_extension)
@@ -32,6 +32,7 @@ def create_metadata(name):
         c.execute("CREATE TABLE METADATA(key TEXT, value TEXT);")
         c.execute("INSERT INTO METADATA (key, value) VALUES('version', '1');")
         c.execute("INSERT INTO METADATA (key, value) VALUES('name', '" + name + "');")
+        c.execute("INSERT INTO METADATA (key, value) VALUES('path', '" + path + "');")
         c.execute("INSERT INTO METADATA (key, value) VALUES('createdate', '" + str(int(time.time())) + "');")
         c.execute("INSERT INTO METADATA (key, value) VALUES('lastmodifdate', '" + str(int(time.time())) + "');")
         conn.commit()
@@ -71,8 +72,8 @@ def start():
     update_catalogs_list()
     load_catalogs()
 
-def create_db(name, files):
-    create_metadata(name)
+def create_db(name, path, files):
+    create_metadata(name, path)
     create_catalog(name, files)
 
 if __name__ == '__main__':
@@ -89,12 +90,13 @@ if __name__ == '__main__':
 
     elif (cmd == 'add'):
         name = sys.argv[2]
-        path = sys.argv[3]
+        orig_path = sys.argv[3]
+
         # if not name:
         #     print(noname)
         # todo verify stat gives the same value in windows
         files = []    
-        for dirname, dirnames, filenames in os.walk(path):
+        for dirname, dirnames, filenames in os.walk(orig_path):
             for filename in filenames:
                 try:
                     fullpath = os.path.join(dirname, filename)
@@ -107,7 +109,7 @@ if __name__ == '__main__':
                     print("An error occurred:", ue)
 
         # print(files)
-        create_db(name, files)
+        create_db(name, os.path.abspath(orig_path), files)
 
     elif (cmd == 'ls'):
         cats = sys.argv[2:]
