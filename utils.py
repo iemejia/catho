@@ -10,6 +10,6 @@ def get_file_info(basepath, filename):
 
     fullpath = os.path.join(basepath, filename)
     stat = os.stat(fullpath)
-    date = long(stat.st_ctime)
+    date = int(stat.st_ctime)
     size = stat.st_size # in bytes
     return size, date
