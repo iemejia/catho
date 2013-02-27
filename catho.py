@@ -10,10 +10,17 @@ import argparse # still not used
 import datetime
 import time
 
+home = os.path.expanduser("~")
+cathoPath = home + "/.catho/"
+
+def checkCathoDir():
+    if not os.path.exists(cathoPath):
+        os.makedirs(cathoPath)
 
 def createMetadata(name):
     try:
-        conn = sqlite3.connect("./" + name + '.db')
+        checkCathoDir()
+        conn = sqlite3.connect(cathoPath + name + '.db')
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA(key TEXT, value TEXT);")
@@ -28,7 +35,8 @@ def createMetadata(name):
 
 def createCatalog(name, files):
     try:
-        conn = sqlite3.connect("./" + name + '.db')
+        checkCathoDir()
+        conn = sqlite3.connect(cathoPath + name + '.db')
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
         c.execute("CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
