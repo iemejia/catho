@@ -1,3 +1,5 @@
+# haskell specific
+
 dist
 cabal-dev
 *.o
@@ -5,3 +7,6 @@ cabal-dev
 *.chi
 *.chs.h
 .virthualenv
+
+# Mac OS X
+.DS_Store
