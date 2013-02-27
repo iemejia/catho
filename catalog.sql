@@ -9,14 +9,16 @@ CREATE TABLE METADATA(key TEXT, value TEXT);
 -- key                value
 -- version            1
 -- name               %s must be equal to filename
--- createdate         #
--- lastmodifdate      #
+-- path               # original indexed path
+-- createdate         # date of creation of the db
+-- lastmodifdate      # date of last modification of the db
 
 -- optional key/values (some for performance reasons)
 -- lastcrc            #
 -- size               #
 -- numdir             #
 -- numfiles           #
+-- hash type          # type of hash function included in the catalog, if it includes hashes, default=SHA-1
 
 INSERT INTO METADATA VALUES('version', 1);
 
