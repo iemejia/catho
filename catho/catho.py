@@ -65,12 +65,12 @@ def file_get_filelist(orig_path, compute_hash = False):
             try:
                 path = os.path.join(dirname) # path of the file
                 fullpath = os.path.join(dirname, filename)
-                # logger.debug("Processing %s" % fullpath)
+                logger.debug("Processing %s" % fullpath)
                 size, date = get_file_info(dirname, filename)
                 hash = ''
                 if compute_hash and not os.path.isdir(filename):
                     hash = file_get_sha1(fullpath)
-                    # logger.debug("SHA1 = %s" % hash)
+                    logger.debug("SHA1 = %s" % hash)
                 files.append((filename, date, size, path, hash))
             except OSError as oe:
                 logger.error("An error occurred: %s" % oe)
@@ -111,6 +111,7 @@ def __db_insert(name, query, l):
         conn = sqlite3.connect(file_get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
+        logger.debug('SQL: Executing %s %s' % (query, l)) 
         c.executemany(query, l)
         conn.commit()
         conn.close()
@@ -126,6 +127,7 @@ def __db_get_all(name, query, params = ()):
         conn.text_factory = str
         conn.create_function("REGEX", 2, db_regex)
         c = conn.cursor()
+        logger.debug('SQL: Executing %s %s' % (query, params)) 
         c.execute(query, params)
         rows = c.fetchall()
         conn.close()
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if (args.verbose):
         logger.setLevel(logging.DEBUG)
-        logger.debug(args)
+        # logger.debug(args)
 
     # we evaluate each command
     if (args.command == 'init'):
