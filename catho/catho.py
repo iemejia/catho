@@ -37,6 +37,8 @@ def file_get_catalog_abspath(name):
     return catho_path + name + catho_extension
 
 def file_get_sha1(filename):
+    # todo should we use the git convention for this ?
+    # sha1("blob " + filesize + "\0" + data)
     sha1 = hashlib.sha1()
     f = open(filename, 'rb')
     try:
@@ -56,6 +58,8 @@ def file_get_catalogs():
 
 def file_get_filelist(orig_path, compute_hash = False):
     # todo verify if stat gives the same value in windows
+    if compute_hash:
+        logger.info("Computing hashes (this will take more time)...")
     files = []    
     for dirname, dirnames, filenames in os.walk(orig_path):
         for filename in filenames:
@@ -66,8 +70,6 @@ def file_get_filelist(orig_path, compute_hash = False):
                 size, date = get_file_info(dirname, filename)
                 hash = ''
                 if compute_hash and not os.path.isdir(filename):
-                    # todo should we use the git convention for this ?
-                    # sha1("blob " + filesize + "\0" + data)
                     hash = file_get_sha1(fullpath)
                     # logger.debug("SHA1 = %s" % hash)
                 files.append((filename, date, size, path, hash))
@@ -129,10 +131,14 @@ def __db_get_all(name, query):
         logger.error("An error occurred:", e)
     return rows
 
-def __db_insert_metadata(name, path):
-    """Insert metadata from the metadata dictionary into the database"""
+def build_metadata(name, path, compute_hash = False):
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path), ('createdate', date), ('lastmodifdate', date)]
+    if compute_hash:
+        metadata.append(('hash', 'sha-1'))
+    return metadata
+
+def __db_insert_metadata(name, metadata):
     return __db_insert(name, sql_insert_metadata, metadata)
 
 def __db_insert_catalog(name, files):
@@ -144,11 +150,9 @@ def db_create(name, path, files):
     __db_insert_catalog(name, files)
 
 def db_get_metadata(name):
-    """Returns a tuple (key, value) with the metadata"""
     return __db_get_all(name, sql_select_metadata)
 
 def db_get_catalog(name):
-    """Returns a tuple of the catalog, a row corresponds to a file"""
     return __db_get_all(name, sql_select_catalog)
 
 # to string functions
@@ -193,9 +197,9 @@ if __name__ == '__main__':
         if '-f' in extra_args or not os.path.exists(file_get_catalog_abspath(name)):
             logger.info("Creating catalog: %s" % name)
             compute_hash = '-H' in extra_args
-            if compute_hash:
-                logger.info("Computing hashes (this will take more time)...")
-            db_create(name, os.path.abspath(orig_path), file_get_filelist(orig_path, compute_hash))
+            metadata = build_metadata(name, os.path.abspath(orig_path), compute_hash)
+            files = file_get_filelist(orig_path, compute_hash)
+            db_create(name, metadata, files)
         else:
             logger.error("Catalog: %s already exists" % name)
 
