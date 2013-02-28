@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
-import os
-import sqlite3
-import argparse # still not used
 from datetime import datetime
-import time
+from utils import get_file_info
+import argparse
 import glob
 import hashlib
 import logging
-
-from utils import get_file_info
+import os
+import sqlite3
+import sys
+import time
 
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
