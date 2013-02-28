@@ -20,6 +20,11 @@ class TestCatalog(unittest.TestCase):
         self.assertTrue(filelist)
         self.assertTrue(len(filelist) > 0)
 
+    def test_get_filelist_hash(self):
+        filelist = catho.get_filelist(self.orig_path, compute_hash=True)
+        self.assertTrue(filelist)
+        self.assertTrue(len(filelist) > 0)
+        
     def test_create_db(self):
         catho.create_db(self.name, os.path.abspath(self.orig_path), catho.get_filelist(self.orig_path))
         # self.assertEqual(md5(sub[2]), '4cd9278a35ba2305f47354ee13472260')

@@ -33,7 +33,6 @@ def get_catalog_abspath(name):
 def __create_metadata(name, metadata):
     """Insert metadata from the metadata dictionnary"""
     try:
-        touch_catho_dir()
         conn = sqlite3.connect(get_catalog_abspath(name))
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
@@ -51,13 +50,12 @@ def create_metadata(name, path):
 
 def create_catalog(name, files):
     try:
-        touch_catho_dir()
         conn = sqlite3.connect(get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
         c.execute("CREATE TABLE CATALOG (id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
-        c.executemany('INSERT INTO CATALOG (name, date, size, path) VALUES (?,?,?,?)', files)
+        c.executemany('INSERT INTO CATALOG (name, date, size, path, hash) VALUES (?,?,?,?,?)', files)
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
@@ -76,7 +74,6 @@ def __get_all(name, query):
     """Generic query invocation in name db"""
     rows = []
     try:
-        touch_catho_dir()
         conn = sqlite3.connect(get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
@@ -113,15 +110,32 @@ def create_db(name, path, files):
     create_metadata(name, path)
     create_catalog(name, files)
 
-def get_filelist(orig_path):
+def get_sha1(filename):
+    sha1 = hashlib.sha1()
+    f = open(filename, 'rb')
+    try:
+        sha1.update(f.read())
+    finally:
+        f.close()
+    return sha1.hexdigest()
+
+def get_filelist(orig_path, compute_hash = False):
     # todo verify if stat gives the same value in windows
     files = []    
     for dirname, dirnames, filenames in os.walk(orig_path):
         for filename in filenames:
             try:
                 path = os.path.join(dirname) # path of the file
+                fullpath = os.path.join(dirname, filename)
+                # logger.debug("Processing %s" % fullpath)
                 size, date = get_file_info(dirname, filename)
-                files.append((filename, date, size, path))
+                hash = ''
+                if compute_hash and not os.path.isdir(filename):
+                    # todo should we use the git convention for this ?
+                    # sha1("blob " + filesize + "\0" + data)
+                    hash = get_sha1(fullpath)
+                    # logger.debug("SHA1 = %s" % hash)
+                files.append((filename, date, size, path, hash))
             except OSError as oe:
                 logger.error("An error occurred:", oe)
             except UnicodeDecodeError as ue:
@@ -155,8 +169,6 @@ def del_catalog_file(catalogs):
             logger.error("rm: %s: No such file or directory" % f)
 
 if __name__ == '__main__':
-    touch_catho_dir()
-
     cmd = sys.argv[1]
 
     if (cmd == 'init'):
@@ -165,14 +177,14 @@ if __name__ == '__main__':
     elif (cmd == 'add'):
         name = sys.argv[2]
         orig_path = sys.argv[3]
-        extra_arg = ''
-        if len(sys.argv) == 5:
-            extra_arg = sys.argv[4] if sys.argv[4] else ''
-
+        extra_args = sys.argv[4:]
         # we check that the file exists or if it's forced and we create the cat
-        if extra_arg == '-f' or not os.path.exists(get_catalog_abspath(name)):
+        if '-f' in extra_args or not os.path.exists(get_catalog_abspath(name)):
             logger.info("Creating catalog: %s" % name)
-            create_db(name, os.path.abspath(orig_path), get_filelist(orig_path))
+            compute_hash = '-H' in extra_args
+            if compute_hash:
+                logger.info("Computing hashes (this will take more time)...")
+            create_db(name, os.path.abspath(orig_path), get_filelist(orig_path, compute_hash))
         else:
             logger.error("Catalog: %s already exists" % name)
 
