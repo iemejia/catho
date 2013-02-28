@@ -102,7 +102,7 @@ def __db_create_schema(name):
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
-        logger.error("An error occurred:", e)
+        logger.error("An error occurred: %s" % e)
 
 def __db_insert(name, query, l):
     """Generic insert invocation in name db"""
@@ -114,21 +114,21 @@ def __db_insert(name, query, l):
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
-        logger.error("An error occurred:", e)
+        logger.error("An error occurred: %s" % e)
 
 
-def __db_get_all(name, query):
+def __db_get_all(name, query, params = ()):
     """Generic query invocation in name db"""
     rows = []
     try:
         conn = sqlite3.connect(file_get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
-        c.execute(query)
+        c.execute(query, params)
         rows = c.fetchall()
         conn.close()
     except sqlite3.Error as e:
-        logger.error("An error occurred:", e)
+        logger.error("An error occurred: %s" % e)
     return rows
 
 def build_metadata(name, path, compute_hash = False):
@@ -182,6 +182,26 @@ def catalogs_info_str(names):
         s += metadata_str(name)
         s += catalog_str(name)
     return s
+
+# Catho operations
+
+def find_in_catalogs(regex, catalogs = None):
+    if catalogs:
+        catalogs = [catalog[0] for catalog in file_get_catalogs() if catalog[0] in catalogs]
+    else:
+        catalogs = [catalog[0] for catalog in file_get_catalogs()]    
+
+    if len(catalogs) == 0:
+        logger.error('Catalog does not exists')
+
+    query = "SELECT * FROM CATALOG WHERE name = ?;"
+
+    items = [] 
+    for catalog in catalogs:
+        matches = __db_get_all(catalog, query, (regex,))
+        items.extend(matches)
+
+    return items
 
 if __name__ == '__main__':
 
@@ -251,8 +271,20 @@ if __name__ == '__main__':
         file_rm_catalog_file(args.names)
 
     elif (args.command == 'find'):
-        # args.catalog can be None in this case it looks in all the catalogs
-        logger.error("TODO find %s in %s" % (args.name, args.catalog) )
+        #catalogs = []
+        if args.catalog:
+            catalogs = (args.catalog,)
+        else:
+            catalogs =  [catalog[0] for catalog in file_get_catalogs()]
+
+        str_catalogs = ', '.join(catalogs)
+        logger.info("Finding %s in (%s)" % (args.name, str_catalogs)) 
+
+        items = find_in_catalogs(args.name, catalogs)
+        for item in items:
+            logger.info('%s', item)
+
+        logger.info("%s items found" % len(items))
 
     elif (args.command == 'scan'):
         logger.error("TODO scan %s" % args.name)

@@ -67,5 +67,26 @@ class TestCatalog(unittest.TestCase):
         str = catho.catalogs_str()
         self.assertTrue(str)
 
+    def test_find_in_catalogs_all_catalogs_two_or_more_matches(self):
+        catho.db_create(self.name, catho.build_metadata(self.name, os.path.abspath(self.orig_path)), catho.file_get_filelist(self.orig_path))
+        catho.db_create(self.name + '_copy', catho.build_metadata(self.name, os.path.abspath(self.orig_path)), catho.file_get_filelist(self.orig_path))
+        items = catho.find_in_catalogs('cathyformat.txt')
+        self.assertTrue(len(items) > 1)
+
+    def test_find_in_catalog_one_catalog_one_or_more_matches(self):
+        catho.db_create(self.name, catho.build_metadata(self.name, os.path.abspath(self.orig_path)), catho.file_get_filelist(self.orig_path))
+        items = catho.find_in_catalogs('cathyformat.txt', ('test',))
+        self.assertTrue(len(items) > 0)
+
+    def test_find_in_catalogs_all_catalogs_not_matches(self):
+        catho.db_create(self.name, catho.build_metadata(self.name, os.path.abspath(self.orig_path)), catho.file_get_filelist(self.orig_path))
+        items = catho.find_in_catalogs('not_existing_file.ext')
+        self.assertTrue(len(items) == 0)
+
+    def test_find_in_catalog_one_catalog_not_matches(self):
+        catho.db_create(self.name, catho.build_metadata(self.name, os.path.abspath(self.orig_path)), catho.file_get_filelist(self.orig_path))
+        items = catho.find_in_catalogs('not_existing_file.ext', ('test',))
+        self.assertTrue(len(items) == 0)
+
 if __name__ == '__main__':
     unittest.main()
