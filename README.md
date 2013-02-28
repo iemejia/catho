@@ -47,7 +47,7 @@ Developing
 ----------
 
 The catalog correspond to a simple sqlite3 database, for more info
-about the catalog structure, see the docs/catalog.sql file. Catalogs
+about the catalog structure, see the [docs/catalog.sql](https://github.com/iemejia/catho/blob/master/docs/catalog.sql) file. Catalogs
 are saved automatically in the ~/.catho folder.
 
 We would like to create a sort of simple minimalist catalog system so
