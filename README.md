@@ -51,7 +51,8 @@ about the catalog structure, see the docs/catalog.sql file. Catalogs
 are saved automatically in the ~/.catho folder.
 
 We would like to create a sort of simple minimalist catalog system so
-people can create 'nicer' GUI tools for catho.
+people can create nicer tools based on the catho system (e.g. GUI,
+web, etc).
 
 Collaboration
 ----------
