@@ -17,10 +17,9 @@ catho_path = home + "/.catho/"
 catho_extension = '.db'
 
 logger = logging.getLogger('catho')
-logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
 logger.addHandler(ch)
+logger.setLevel(logging.INFO)
 
 sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
 sql_insert_catalog = 'INSERT INTO CATALOG (name, date, size, path, hash) VALUES (?,?,?,?,?)'
@@ -185,43 +184,76 @@ def catalogs_info_str(names):
     return s
 
 if __name__ == '__main__':
-    cmd = sys.argv[1]
 
-    if (cmd == 'init'):
+    parser = argparse.ArgumentParser(description='Catho', prog='catho', epilog='"catho <command> -h" for more information on a specific command.')
+    subparsers = parser.add_subparsers(help='commands', dest='command' )
+
+    # init command
+    init_parser = subparsers.add_parser('init', help='inits catalog repository')
+
+    # help command
+    help_parser = subparsers.add_parser('help', help='help for command')
+    help_parser.add_argument('cmd', action='store', help='command')
+
+    # ls command
+    list_parser = subparsers.add_parser('ls', help='list available catalogs')
+    list_parser.add_argument('names', action='store', nargs='*', help='catalog name')
+
+    # add command
+    add_parser = subparsers.add_parser('add', help='adds catalog')
+    add_parser.add_argument('name', action='store', help='catalog name')
+    add_parser.add_argument('path', action='store', help='path to index')
+    add_parser.add_argument('-f', '--force', help='force', action='store_true')
+    add_parser.add_argument('-H', '--hash', help='add hash info in catalog creation', action='store_true')
+
+    # rm command
+    rm_parser = subparsers.add_parser('rm', help='removes catalog')
+    rm_parser.add_argument('names', action='store', nargs='*', help='catalog name')
+
+    # find command
+    find_parser = subparsers.add_parser('find', help='find a filename in catalog')
+    find_parser.add_argument('name', action='store', help='file name')
+    find_parser.add_argument('catalog', action='store', nargs='?', help='file name')
+
+    # scan command
+    scan_parser = subparsers.add_parser('scan', help='find a filename in catalog')
+    scan_parser.add_argument('name', action='store', help='path name')
+
+    # general options
+    parser.add_argument('-v', '--verbose', action='store_true')
+
+    args = parser.parse_args()
+    if (args.verbose):
+        logger.setLevel(logging.DEBUG)
+        logger.debug(args)
+
+    # we evaluate each command
+    if (args.command == 'init'):
         file_touch_catho_dir()
 
-    elif (cmd == 'add'):
-        name = sys.argv[2]
-        orig_path = sys.argv[3]
-        extra_args = sys.argv[4:]
+    elif (args.command == 'add'):
         # we check that the file exists or if it's forced and we create the cat
-        if '-f' in extra_args or not os.path.exists(file_get_catalog_abspath(name)):
-            logger.info("Creating catalog: %s" % name)
-            compute_hash = '-H' in extra_args
-            metadata = build_metadata(name, os.path.abspath(orig_path), compute_hash)
-            files = file_get_filelist(orig_path, compute_hash)
-            db_create(name, metadata, files)
+        if args.force or not os.path.exists(file_get_catalog_abspath(args.name)):
+            logger.info("Creating catalog: %s" % args.name)
+            metadata = build_metadata(args.name, os.path.abspath(args.path), args.hash)
+            files = file_get_filelist(args.path, args.hash)
+            db_create(args.name, metadata, files)
         else:
-            logger.error("Catalog: %s already exists" % name)
+            logger.error("Catalog: %s already exists" % args.name)
 
-    elif (cmd == 'ls'):
-        names = sys.argv[2:]
-        if not names:
+    elif (args.command == 'ls'):
+        if not args.names:
             logger.info(catalogs_str())
         else:
-            logger.info(catalogs_info_str(names))
+            logger.info(catalogs_info_str(args.names))
 
-    elif (cmd == 'rm'):
-        cats = sys.argv[2:]
-        file_rm_catalog_file(cats)
+    elif (args.command == 'rm'):
+        file_rm_catalog_file(args.names)
 
-    elif (cmd == 'find'):
-        exprs = sys.argv[2:]
-        if exprs:
-            logger.error("TODO find")
+    elif (args.command == 'find'):
+        # args.catalog can be None in this case it looks in all the catalogs
+        logger.error("TODO find %s in %s" % (args.name, args.catalog) )
 
-    elif (cmd == 'scan'):
-        logger.error("TODO scan")
+    elif (args.command == 'scan'):
+        logger.error("TODO scan %s" % args.name)
 
-    else:
-        logger.error("Invalid command")
