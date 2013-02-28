@@ -73,9 +73,9 @@ def file_get_filelist(orig_path, compute_hash = False):
                     # logger.debug("SHA1 = %s" % hash)
                 files.append((filename, date, size, path, hash))
             except OSError as oe:
-                logger.error("An error occurred:", oe)
+                logger.error("An error occurred: %s" % oe)
             except UnicodeDecodeError as ue:
-                logger.error("An error occurred:", ue)
+                logger.error("An error occurred: %s" % ue)
     return files
 
 def file_rm_catalog_file(catalogs):
