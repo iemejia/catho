@@ -200,7 +200,7 @@ def find_in_catalogs(regex, catalogs = None):
         catalogs = [catalog[0] for catalog in file_get_catalogs()]    
 
     if len(catalogs) == 0:
-        logger.error('Catalog does not exists')
+        logger.error('Catalog does not exist')
 
     query = "SELECT * FROM CATALOG WHERE REGEX(?, name);"
 
