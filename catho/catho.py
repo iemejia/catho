@@ -95,6 +95,7 @@ def __db_create_schema(name):
     """Creates the db schema"""
     try:
         conn = sqlite3.connect(file_get_catalog_abspath(name))
+        conn.text_factory = str
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
@@ -109,6 +110,7 @@ def __db_insert(name, query, l):
     """Generic insert invocation in name db"""
     try:
         conn = sqlite3.connect(file_get_catalog_abspath(name))
+        conn.text_factory = str
         c = conn.cursor()
         c.executemany(query, l)
         conn.commit()
