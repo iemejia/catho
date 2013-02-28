@@ -16,7 +16,6 @@ from utils import get_file_info
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
 catho_extension = '.db'
-catalogs = []
 
 logger = logging.getLogger('catho')
 logger.setLevel(logging.DEBUG)
@@ -64,17 +63,14 @@ def create_catalog(name, files):
     except sqlite3.Error as e:
         logger.error("An error occurred:", e.args[0])
 
-def update_catalogs_list():
-    touch_catho_dir()
+def get_catalogs():
+    catalogs = []
     files = os.listdir(catho_path)
-
     for filename in files:
-        filename.endswith(catho_extension)
-        size, date = get_file_info(catho_path, filename)
-        catalogs.append((filename[:-3], size, date))
-
-def load_catalogs():
-    pass
+        if filename.endswith(catho_extension):
+            size, date = get_file_info(catho_path, filename)
+            catalogs.append((filename[:-3], size, date))
+    return catalogs
 
 def __get_all(name, query):
     """Generic query invocation in name db"""
@@ -101,25 +97,65 @@ def get_catalog(name):
     query = "SELECT * FROM CATALOG;"
     return __get_all(name, query)
 
-def print_metadata(meta):
-    logger.info("METADATA")
-    logger.info('\n'.join('%s: \t%s' % (key, value) for (key, value) in meta))
+def metadata_str(name):
+    meta = get_metadata(name)
+    s = "METADATA" + "\n"
+    s += '\n'.join('%s: \t%s' % (key, value) for (key, value) in meta)
+    return s
 
-def print_catalog(catalog):
-    logger.info("CATALOG")
-    logger.info('\n'.join('%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path) for (id, name, date, size, path, hash) in catalog))
-
-def start():
-    touch_catho_dir()
-    update_catalogs_list()
-    load_catalogs()
+def catalog_str(name):
+    catalog = get_catalog(name)
+    s = "CATALOG" + "\n"
+    s += '\n'.join('%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path) for (id, name, date, size, path, hash) in catalog)
+    return s
 
 def create_db(name, path, files):
     create_metadata(name, path)
     create_catalog(name, files)
 
+def get_filelist(orig_path):
+    # todo verify if stat gives the same value in windows
+    files = []    
+    for dirname, dirnames, filenames in os.walk(orig_path):
+        for filename in filenames:
+            try:
+                path = os.path.join(dirname) # path of the file
+                size, date = get_file_info(dirname, filename)
+                files.append((filename, date, size, path))
+            except OSError as oe:
+                logger.error("An error occurred:", oe)
+            except UnicodeDecodeError as ue:
+                logger.error("An error occurred:", ue)
+    return files
+
+def catalogs_str():
+    catalogs = get_catalogs()
+    s = ''
+    for catalog, size, timestamp in catalogs:
+        date = str(datetime.fromtimestamp(timestamp))
+        s += '{: >0} {: >15} {: >15}'.format(*(catalog, size, date))
+    return s
+
+def catalogs_info_str(names):
+    s = ''
+    for name in names:
+        s += metadata_str(name)
+        s += catalog_str(name)
+    return s
+
+def del_catalog_file(catalogs):
+    """ deletes the list of cats """
+    filelist = [ glob.glob(get_catalog_abspath(f)) for f in catalogs ]
+    filelist = sum(filelist, [])
+    for f in filelist:
+        try:
+            os.remove(f)
+            logger.info("rm %s" % f)
+        except OSError:
+            logger.error("rm: %s: No such file or directory" % f)
+
 if __name__ == '__main__':
-    start()
+    touch_catho_dir()
 
     cmd = sys.argv[1]
 
@@ -133,54 +169,29 @@ if __name__ == '__main__':
         if len(sys.argv) == 5:
             extra_arg = sys.argv[4] if sys.argv[4] else ''
 
-        # todo verify stat gives the same value in windows
-        files = []    
-        for dirname, dirnames, filenames in os.walk(orig_path):
-            for filename in filenames:
-                try:
-                    path = os.path.join(dirname) # path of the file
-                    size, date = get_file_info(dirname, filename)
-                    files.append((filename, date, size, path))
-                except OSError as oe:
-                    logger.error("An error occurred:", oe)
-                except UnicodeDecodeError as ue:
-                    logger.error("An error occurred:", ue)
-
         # we check that the file exists or if it's forced and we create the cat
         if extra_arg == '-f' or not os.path.exists(get_catalog_abspath(name)):
             logger.info("Creating catalog: %s" % name)
-            create_db(name, os.path.abspath(orig_path), files)
+            create_db(name, os.path.abspath(orig_path), get_filelist(orig_path))
         else:
             logger.error("Catalog: %s already exists" % name)
 
     elif (cmd == 'ls'):
-        cats = sys.argv[2:]
-        if not cats:
-            for catalog, size, timestamp in catalogs:
-                date = str(datetime.fromtimestamp(timestamp))
-                logger.info('{: >0} {: >15} {: >15}'.format(*(catalog, size, date)))
+        names = sys.argv[2:]
+        if not names:
+            logger.info(catalogs_str())
         else:
-            for cat in cats:
-                meta = get_metadata(cat)
-                print_metadata(meta)
-                catalog = get_catalog(cat)
-                print_catalog(catalog)
-        del cats
-            
+            logger.info(catalogs_info_str(names))
+
     elif (cmd == 'rm'):
         cats = sys.argv[2:]
-        filelist = [ glob.glob(get_catalog_abspath(f)) for f in cats ]
-        filelist = sum(filelist, [])
-        for f in filelist:
-            try:
-                os.remove(f)
-                logger.info("rm %s" % f)
-            except OSError:
-                logger.error("rm: %s: No such file or directory" % f)
-        del cats
+        del_catalog_file(cats)
 
     elif (cmd == 'find'):
         logger.error("TODO find")
 
     elif (cmd == 'scan'):
         logger.error("TODO scan")
+
+    else:
+        logger.error("Invalid command")
