@@ -28,11 +28,14 @@ def touch_catho_dir():
     if not os.path.exists(catho_path):
         os.makedirs(catho_path)
 
+def get_catalog_abspath(name):
+    return catho_path + name + catho_extension
+
 def __create_metadata(name, metadata):
     """Insert metadata from the metadata dictionnary"""
     try:
         touch_catho_dir()
-        conn = sqlite3.connect(catho_path + name + catho_extension)
+        conn = sqlite3.connect(get_catalog_abspath(name))
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
@@ -50,7 +53,7 @@ def create_metadata(name, path):
 def create_catalog(name, files):
     try:
         touch_catho_dir()
-        conn = sqlite3.connect(catho_path + name + catho_extension)
+        conn = sqlite3.connect(get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
         c.execute("DROP TABLE IF EXISTS CATALOG;")
@@ -78,7 +81,7 @@ def __get_all(name, query):
     rows = []
     try:
         touch_catho_dir()
-        conn = sqlite3.connect(catho_path + name + catho_extension)
+        conn = sqlite3.connect(get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
         c.execute(query)
@@ -117,10 +120,6 @@ def create_db(name, path, files):
 
 if __name__ == '__main__':
     start()
-    # logger.debug(sys.argv)
-
-    #if len(sys.argv) != 4:
-    #    sys.exit(1)
 
     cmd = sys.argv[1]
 
@@ -130,15 +129,15 @@ if __name__ == '__main__':
     elif (cmd == 'add'):
         name = sys.argv[2]
         orig_path = sys.argv[3]
+        extra_arg = ''
+        if len(sys.argv) == 5:
+            extra_arg = sys.argv[4] if sys.argv[4] else ''
 
-        # if not name:
-        #     logger.debug(noname)
         # todo verify stat gives the same value in windows
         files = []    
         for dirname, dirnames, filenames in os.walk(orig_path):
             for filename in filenames:
                 try:
-                    fullpath = os.path.join(dirname, filename)
                     path = os.path.join(dirname) # path of the file
                     size, date = get_file_info(dirname, filename)
                     files.append((filename, date, size, path))
@@ -147,8 +146,12 @@ if __name__ == '__main__':
                 except UnicodeDecodeError as ue:
                     logger.error("An error occurred:", ue)
 
-        # logger.debug(files)
-        create_db(name, os.path.abspath(orig_path), files)
+        # we check that the file exists or if it's forced and we create the cat
+        if extra_arg == '-f' or not os.path.exists(get_catalog_abspath(name)):
+            logger.info("Creating catalog: %s" % name)
+            create_db(name, os.path.abspath(orig_path), files)
+        else:
+            logger.error("Catalog: %s already exists" % name)
 
     elif (cmd == 'ls'):
         cats = sys.argv[2:]
@@ -166,7 +169,7 @@ if __name__ == '__main__':
             
     elif (cmd == 'rm'):
         cats = sys.argv[2:]
-        filelist = [ glob.glob(catho_path + f + catho_extension) for f in cats ]
+        filelist = [ glob.glob(get_catalog_abspath(f)) for f in cats ]
         filelist = sum(filelist, [])
         for f in filelist:
             try:
