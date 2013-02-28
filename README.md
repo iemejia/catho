@@ -18,36 +18,29 @@ TODO
 
 Use
 ----------
-Prepare catalog folder
 
+    # Prepare catalog folder
     catho init
 
-Add a catalog with alias
-
+    # Add a catalog with alias
     catho add name path  
 
-Remove a catalog
-
+    # Remove a catalog
     catho rm name
 
-Search for expr (filename) in all catalogs
-
+    # Search for expr (filename) in all catalogs
     catho search expr
 
-Search for expr (filename) in a specific catalog
-
+    # Search for expr (filename) in a specific catalog
     catho search name expr
 
-List all catalogs
-
+    # List all catalogs
     catho ls
 
-Find apparently existing files from dir in the catalog
-
+    # Find apparently existing files from dir in the catalog
     catho scan name dir
 
-Import existing cathy catalogs to the catho format
-
+    # Import existing cathy catalogs to the catho format
     catho import file.cat
     
 Developing
@@ -56,6 +49,9 @@ Developing
 The catalog correspond to a simple sqlite3 database, for more info
 about the catalog structure, see the docs/catalog.sql file. Catalogs
 are saved automatically in the ~/.catho folder.
+
+We would like to create a sort of simple minimalist catalog system so
+other people can create 'nicer' GUI tools for catho.
 
 Collaboration
 ----------
