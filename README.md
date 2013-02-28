@@ -54,5 +54,15 @@ Developing
 ----------
 
 The catalog correspond to a simple sqlite3 database, for more info
-about the catalog structure, see the catalog.sql file. If not defined
-explicitly catalogs will be saved in the ~/.catho folder.
+about the catalog structure, see the docs/catalog.sql file. Catalogs
+are saved automatically in the ~/.catho folder.
+
+Collaboration
+----------
+If you want to add some functionality or change something please
+execute the testcases to be sure everything is working, and/or modify
+them if necessary so they don't break.
+
+Another common sense rule is don't add code that would be eventually
+used, to keep maintenance easy, please only add code that is related
+to some existing and tested funtionality.
