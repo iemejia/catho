@@ -96,15 +96,15 @@ def get_catalog(name):
 
 def metadata_str(name):
     meta = get_metadata(name)
-    s = "METADATA" + "\n"
+    s = "METADATA\n"
     s += '\n'.join('%s: \t%s' % (key, value) for (key, value) in meta)
-    return s
+    return s + '\n'
 
 def catalog_str(name):
     catalog = get_catalog(name)
-    s = "CATALOG" + "\n"
-    s += '\n'.join('%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path) for (id, name, date, size, path, hash) in catalog)
-    return s
+    s = "CATALOG\n"
+    s += '\n'.join('%s\t%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path, hash) for (id, name, date, size, path, hash) in catalog)
+    return s + '\n'
 
 def create_db(name, path, files):
     create_metadata(name, path)
