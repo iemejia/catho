@@ -21,14 +21,12 @@ CREATE TABLE METADATA(key TEXT, value TEXT);
 -- hash type          # type of hash function included in the catalog, if it includes hashes, default=SHA-1
 -- notes              # eventual notes for extra info in the catalog
 
-INSERT INTO METADATA VALUES('version', 1);
 
--- concrete CATALOG file
+-- CATALOG table
+CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);
 -- id sequential id
 -- name file name
 -- date includes time and is represented in unix time > (1970)
 -- length file length in bytes
 -- path original path
 -- hash is optional for complete indexing
-CREATE TABLE CATALOG(id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);
-
