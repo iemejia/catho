@@ -11,6 +11,7 @@ import os
 import sqlite3
 import sys
 import time
+import re
 
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
@@ -123,6 +124,7 @@ def __db_get_all(name, query, params = ()):
     try:
         conn = sqlite3.connect(file_get_catalog_abspath(name))
         conn.text_factory = str
+        conn.create_function("REGEX", 2, db_regex)
         c = conn.cursor()
         c.execute(query, params)
         rows = c.fetchall()
@@ -154,6 +156,12 @@ def db_get_metadata(name):
 
 def db_get_catalog(name):
     return __db_get_all(name, sql_select_catalog)
+
+def db_regex(pattern, string):
+    regex = re.match(pattern, string)
+    if regex:
+        return True
+    return False
 
 # to string functions
 def metadata_str(name):
@@ -194,7 +202,7 @@ def find_in_catalogs(regex, catalogs = None):
     if len(catalogs) == 0:
         logger.error('Catalog does not exists')
 
-    query = "SELECT * FROM CATALOG WHERE name = ?;"
+    query = "SELECT * FROM CATALOG WHERE REGEX(?, name);"
 
     items = [] 
     for catalog in catalogs:
