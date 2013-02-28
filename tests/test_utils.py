@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 
 import sys
 import unittest
@@ -14,7 +15,8 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_catalog_creation(self):
-        (size, date) = utils.get_file_info('.', 'test_utils.py')
+        path = os.path.dirname(utils.__file__)
+        (size, date) = utils.get_file_info(path, 'utils.py')
         self.assertTrue(size)
         self.assertTrue(date)
         return
