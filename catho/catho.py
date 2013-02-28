@@ -73,6 +73,38 @@ def update_catalogs_list():
 def load_catalogs():
     pass
 
+def __get_all(name, query):
+    """Generic query invocation in name db"""
+    rows = []
+    try:
+        touch_catho_dir()
+        conn = sqlite3.connect(catho_path + name + catho_extension)
+        conn.text_factory = str
+        c = conn.cursor()
+        c.execute(query)
+        rows = c.fetchall()
+        conn.close()
+    except sqlite3.Error as e:
+        logger.error("An error occurred:", e)
+    return rows
+
+def get_metadata(name):
+    """Returns a tuple (key, value) with the metadata"""
+    query = "SELECT * FROM METADATA;"
+    return __get_all(name, query)
+
+def get_catalog(name):
+    """Returns a tuple of the catalog, a row corresponds to a file"""
+    query = "SELECT * FROM CATALOG;"
+    return __get_all(name, query)
+
+def print_metadata(meta):
+    logger.info("METADATA")
+    logger.info('\n'.join('%s: \t%s' % (key, value) for (key, value) in meta))
+
+def print_catalog(catalog):
+    logger.info("CATALOG")
+    logger.info('\n'.join('%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path) for (id, name, date, size, path, hash) in catalog))
 
 def start():
     touch_catho_dir()
@@ -122,10 +154,14 @@ if __name__ == '__main__':
         cats = sys.argv[2:]
         if not cats:
             for catalog, size, timestamp in catalogs:
-                date = datetime.fromtimestamp(timestamp)
-                logger.info('{: >0} {: >15} {: >15}'.format(*(catalog, size, str(date))))
+                date = str(datetime.fromtimestamp(timestamp))
+                logger.info('{: >0} {: >15} {: >15}'.format(*(catalog, size, date)))
         else:
-            logger.debug("TODO: List catalog info")
+            for cat in cats:
+                meta = get_metadata(cat)
+                print_metadata(meta)
+                catalog = get_catalog(cat)
+                print_catalog(catalog)
         del cats
             
     elif (cmd == 'rm'):
