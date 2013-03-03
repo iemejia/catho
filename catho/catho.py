@@ -13,6 +13,7 @@ import sys
 import time
 import re
 
+VALID_HASH_TYPES = ['sha-1']
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
 catho_extension = '.db'
@@ -35,7 +36,10 @@ def file_touch_catho_dir():
 def file_get_catalog_abspath(name):
     return catho_path + name + catho_extension
 
-def file_get_sha1(filename):
+def file_hash(filename, hash_type):
+    """ calculates the hash for the file in filename """
+    """ default implementation calcs sha-1 """
+
     # todo should we use the git convention for this ?
     # sha1("blob " + filesize + "\0" + data)
     sha1 = hashlib.sha1()
@@ -55,10 +59,13 @@ def file_get_catalogs():
             catalogs.append((filename[:-3], size, date))
     return catalogs
 
-def file_get_filelist(orig_path, compute_hash = False):
+def file_get_filelist(orig_path, hash_type = None):
     # todo verify if stat gives the same value in windows
-    if compute_hash:
+    if hash_type is not None:
         logger.info("Computing hashes (this will take more time)...")
+        if hash_type not in VALID_HASH_TYPES:
+            logger.info("Invalid hash_type %s", hash_type)
+
     files = []    
     for dirname, dirnames, filenames in os.walk(orig_path):
         for filename in filenames:
@@ -68,9 +75,9 @@ def file_get_filelist(orig_path, compute_hash = False):
                 logger.debug("Processing %s" % fullpath)
                 size, date = get_file_info(dirname, filename)
                 hash = ''
-                if compute_hash and not os.path.isdir(filename):
-                    hash = file_get_sha1(fullpath)
-                    logger.debug("SHA1 = %s" % hash)
+                if hash_type is not None and not os.path.isdir(filename):
+                    hash = file_hash(fullpath, hash_type)
+                    logger.debug("%s = %s" % (hash_type, hash))
                 files.append((filename, date, size, path, hash))
             except OSError as oe:
                 logger.error("An error occurred: %s" % oe)
@@ -135,11 +142,11 @@ def __db_get_all(name, query, params = ()):
         logger.error("An error occurred: %s" % e)
     return rows
 
-def build_metadata(name, path, compute_hash = False):
+def build_metadata(name, path, hash_type = None):
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path), ('createdate', date), ('lastmodifdate', date)]
-    if compute_hash:
-        metadata.append(('hash', 'sha-1'))
+    if hash_type:
+        metadata.append(('hash', hash_type))
     return metadata
 
 def __db_insert_metadata(name, metadata):
@@ -265,8 +272,10 @@ if __name__ == '__main__':
         # we check that the file exists or if it's forced and we create the cat
         if args.force or not os.path.exists(file_get_catalog_abspath(args.name)):
             logger.info("Creating catalog: %s" % args.name)
-            metadata = build_metadata(args.name, os.path.abspath(args.path), args.hash)
-            files = file_get_filelist(args.path, args.hash)
+            # for the moment more hash types are not supported (required)
+            hash_type = 'sha-1' if args.hash else None
+            metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
+            files = file_get_filelist(args.path, hash_type)
             db_create(args.name, metadata, files)
         else:
             logger.error("Catalog: %s already exists" % args.name)
