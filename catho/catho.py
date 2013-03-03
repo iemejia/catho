@@ -15,6 +15,7 @@ import time
 import re
 
 VALID_HASH_TYPES = ['sha-1']
+MAX_FILES_ITER = 1000
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
 catho_extension = '.db'
@@ -61,29 +62,26 @@ def file_get_catalogs():
             catalogs.append((filename[:-3], size, date))
     return catalogs
 
-def file_get_filelist(orig_path, hash_type = None):
-    # todo verify if stat gives the same value in windows
-    if hash_type is not None:
-        logger.info("Computing hashes (this will take more time)...")
-        if hash_type not in VALID_HASH_TYPES:
-            logger.error("Invalid hash_type %s", hash_type)
-            return []
-
+def file_get_filelist(orig_path, hash_type = 'sha-1'):
     # links to directories are ignored to avoid recursion fo the instanct
-    files = []    
+    i = 0
+    files = []
     for dirname, dirnames, filenames in os.walk(orig_path):
         # print(dirname, dirnames, filenames)
         for filename in filenames:
+            i += 1
             path = os.path.join(dirname) # path of the file
             fullpath = os.path.join(dirname, filename)
             try:
                 size, date = get_file_info(fullpath)
-                hash = ''
-                if hash_type is not None:
-                    hash = file_hash(fullpath, hash_type)
+                hash = file_hash(fullpath, hash_type)
                 files.append((filename, date, size, path, hash))
                 logger.debug("Adding %s | %s" % (fullpath, hash))
-#                print(sys.getsizeof(files))
+                if (i == MAX_FILES_ITER):
+                    yield files
+                    # we restart the accumulators
+                    i = 0
+                    files = []
             except OSError as oe:
                 if oe.errno == errno.ENOENT:
                     realpath = os.path.realpath(fullpath)
@@ -94,7 +92,8 @@ def file_get_filelist(orig_path, hash_type = None):
                 logger.error("An error occurred processing %s: %s" % (filename, ue))
             except IOError as ioe:
                 logger.error("An error occurred processing %s: %s" % (filename, ioe))
-    return files
+
+    yield files
 
 def file_rm_catalog_file(catalogs):
     """ deletes the list of cats """
@@ -117,7 +116,7 @@ def __db_create_schema(name):
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
         c.execute("DROP TABLE IF EXISTS CATALOG;")
-        c.execute("CREATE TABLE CATALOG (id INT PRIMARY KEY ASC, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
+        c.execute("CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
@@ -129,7 +128,7 @@ def __db_insert(name, query, l):
         conn = sqlite3.connect(file_get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
-        logger.debug('SQL: Executing %s' % query) # , l
+        logger.debug('SQL: Executing %s %s' % (query ,l)) #
         c.executemany(query, l)
         conn.commit()
         conn.close()
@@ -153,7 +152,7 @@ def __db_get_all(name, query, params = ()):
         logger.error("An error occurred: %s" % e)
     return rows
 
-def build_metadata(name, path, hash_type = None):
+def build_metadata(name, path, hash_type = 'sha-1'):
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path), ('createdate', date), ('lastmodifdate', date)]
     if hash_type:
@@ -166,10 +165,9 @@ def __db_insert_metadata(name, metadata):
 def __db_insert_catalog(name, files):
     return __db_insert(name, sql_insert_catalog, files)
 
-def db_create(name, path, files):
+def db_create(name, path):
     __db_create_schema(name)
     __db_insert_metadata(name, path)
-    __db_insert_catalog(name, files)
 
 def db_get_metadata(name):
     return __db_get_all(name, sql_select_metadata)
@@ -282,7 +280,7 @@ if __name__ == '__main__':
         logger.addHandler(logging.NullHandler())
 
     if args.create_log:
-        logger.info('logging to file %s')
+        logger.info('logging to file %s' % args.create_log)
         fh = logging.FileHandler(args.create_log) # to check RotatingFileHandler
         logger.addHandler(fh)
 
@@ -295,10 +293,16 @@ if __name__ == '__main__':
         if args.force or not os.path.exists(file_get_catalog_abspath(args.name)):
             logger.info("Creating catalog: %s" % args.name)
 
+            # we create the header of the datafile
             hash_type = 'sha-1'
             metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
-            files = file_get_filelist(args.path, hash_type)
-            db_create(args.name, metadata, files)
+            db_create(args.name, metadata)
+
+            # and then we add in subsets the catalog (to avoid overusing memory)
+            filesubsets = file_get_filelist(args.path, hash_type)
+            for files in filesubsets:
+                __db_insert_catalog(args.name, files)
+
         else:
             logger.error("Catalog: %s already exists" % args.name)
 
