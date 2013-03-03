@@ -16,7 +16,8 @@ class TestUtils(unittest.TestCase):
 
     def test_catalog_creation(self):
         path = os.path.dirname(utils.__file__)
-        (size, date) = utils.get_file_info(path, 'utils.py')
+        fullpath = os.path.join(path, 'utils.py')
+        (size, date) = utils.get_file_info(fullpath)
         self.assertTrue(size)
         self.assertTrue(date)
         return

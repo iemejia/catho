@@ -21,7 +21,7 @@ class TestCatalog(unittest.TestCase):
         self.assertTrue(len(filelist) > 0)
 
     def test_file_get_filelist_hash(self):
-        filelist = catho.file_get_filelist(self.orig_path, compute_hash=True)
+        filelist = catho.file_get_filelist(self.orig_path, hash_type='sha-1')
         self.assertTrue(filelist)
         self.assertTrue(len(filelist) > 0)
         

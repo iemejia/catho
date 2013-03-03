@@ -4,6 +4,7 @@
 from datetime import datetime
 from utils import get_file_info
 import argparse
+import errno
 import glob
 import hashlib
 import logging
@@ -55,7 +56,8 @@ def file_get_catalogs():
     files = os.listdir(catho_path)
     for filename in files:
         if filename.endswith(catho_extension):
-            size, date = get_file_info(catho_path, filename)
+            fullpath = os.path.join(catho_path, filename)
+            size, date = get_file_info(fullpath)
             catalogs.append((filename[:-3], size, date))
     return catalogs
 
@@ -64,25 +66,33 @@ def file_get_filelist(orig_path, hash_type = None):
     if hash_type is not None:
         logger.info("Computing hashes (this will take more time)...")
         if hash_type not in VALID_HASH_TYPES:
-            logger.info("Invalid hash_type %s", hash_type)
+            logger.error("Invalid hash_type %s", hash_type)
+            return []
 
+    # links to directories are ignored to avoid recursion fo the instanct
     files = []    
     for dirname, dirnames, filenames in os.walk(orig_path):
+        # print(dirname, dirnames, filenames)
         for filename in filenames:
+            path = os.path.join(dirname) # path of the file
+            fullpath = os.path.join(dirname, filename)
             try:
-                path = os.path.join(dirname) # path of the file
-                fullpath = os.path.join(dirname, filename)
-                logger.debug("Processing %s" % fullpath)
-                size, date = get_file_info(dirname, filename)
+                size, date = get_file_info(fullpath)
                 hash = ''
-                if hash_type is not None and not os.path.isdir(filename):
+                if hash_type is not None:
                     hash = file_hash(fullpath, hash_type)
-                    logger.debug("%s = %s" % (hash_type, hash))
                 files.append((filename, date, size, path, hash))
+                logger.debug("Adding %s | %s" % (fullpath, hash))
             except OSError as oe:
-                logger.error("An error occurred: %s" % oe)
+                if oe.errno == errno.ENOENT:
+                    realpath = os.path.realpath(fullpath)
+                    logger.error("Ignoring %s. No such target file or directory %s" % (fullpath, realpath))
+                else:
+                    logger.error("An error occurred processing %s: %s" % (filename,oe))
             except UnicodeDecodeError as ue:
-                logger.error("An error occurred: %s" % ue)
+                logger.error("An error occurred processing %s: %s" % (filename, ue))
+            except IOError as ioe:
+                logger.error("An error occurred processing %s: %s" % (filename, ioe))
     return files
 
 def file_rm_catalog_file(catalogs):
@@ -118,7 +128,7 @@ def __db_insert(name, query, l):
         conn = sqlite3.connect(file_get_catalog_abspath(name))
         conn.text_factory = str
         c = conn.cursor()
-        logger.debug('SQL: Executing %s %s' % (query, l)) 
+        logger.debug('SQL: Executing %s' % query) # , l
         c.executemany(query, l)
         conn.commit()
         conn.close()
@@ -134,7 +144,7 @@ def __db_get_all(name, query, params = ()):
         conn.text_factory = str
         conn.create_function("REGEX", 2, db_regex)
         c = conn.cursor()
-        logger.debug('SQL: Executing %s %s' % (query, params)) 
+        logger.debug('SQL: Executing %s %s' % (query, params))
         c.execute(query, params)
         rows = c.fetchall()
         conn.close()
@@ -258,17 +268,29 @@ if __name__ == '__main__':
 
     # general options
     parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-s', '--silent', action='store_true')
+    parser.add_argument('-log', '--create-log', help='creates log file', action='store')
 
     args = parser.parse_args()
-    if (args.verbose):
+    # logger.debug(args)
+
+    if args.verbose:
         logger.setLevel(logging.DEBUG)
-        # logger.debug(args)
+
+    if args.silent:
+        logger.removeHandler(ch)
+        logger.addHandler(logging.NullHandler())
+
+    if args.create_log:
+        logger.info('logging to file %s')
+        fh = logging.FileHandler('catho.log') # to check RotatingFileHandler
+        logger.addHandler(fh)
 
     # we evaluate each command
-    if (args.command == 'init'):
+    if args.command == 'init':
         file_touch_catho_dir()
 
-    elif (args.command == 'add'):
+    elif args.command == 'add':
         # we check that the file exists or if it's forced and we create the cat
         if args.force or not os.path.exists(file_get_catalog_abspath(args.name)):
             logger.info("Creating catalog: %s" % args.name)
@@ -280,16 +302,16 @@ if __name__ == '__main__':
         else:
             logger.error("Catalog: %s already exists" % args.name)
 
-    elif (args.command == 'ls'):
+    elif args.command == 'ls':
         if not args.names:
             logger.info(catalogs_str())
         else:
             logger.info(catalogs_info_str(args.names))
 
-    elif (args.command == 'rm'):
+    elif args.command == 'rm':
         file_rm_catalog_file(args.names)
 
-    elif (args.command == 'find'):
+    elif args.command == 'find':
         #catalogs = []
         if args.catalog:
             catalogs = (args.catalog,)
@@ -305,6 +327,6 @@ if __name__ == '__main__':
 
         logger.info("%s items found" % len(items))
 
-    elif (args.command == 'scan'):
+    elif args.command == 'scan':
         logger.error("TODO scan %s" % args.name)
 
