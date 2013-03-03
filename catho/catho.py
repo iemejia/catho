@@ -14,7 +14,7 @@ import sys
 import time
 import re
 
-VALID_HASH_TYPES = ['sha-1']
+VALID_HASH_TYPES = ['sha1']
 MAX_FILES_ITER = 1000
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
@@ -38,19 +38,29 @@ def file_touch_catho_dir():
 def file_get_catalog_abspath(name):
     return catho_path + name + catho_extension
 
-def file_hash(filename, hash_type):
+def file_hash(filename, hash_type = 'sha1'):
     """ calculates the hash for the file in filename """
-    """ default implementation calcs sha-1 """
-
+    """ default implementation calcs sha1 """
     # todo should we use the git convention for this ?
     # sha1("blob " + filesize + "\0" + data)
-    sha1 = hashlib.sha1()
+
+    # if hash_type != 'sha1':
+    #     h = hashlib.new(hash_type) # more generic call
+    h = hashlib.sha1()
     f = open(filename, 'rb')
+    # read the file in 1MB slices to avoid 
+    block_size=2**20
     try:
-        sha1.update(f.read())
+        while True:
+            data = f.read(block_size)
+            if not data:
+                break
+            h.update(data)
     finally:
         f.close()
-    return sha1.hexdigest()
+    hash = h.hexdigest()
+    del h
+    return hash
 
 def file_get_catalogs():
     catalogs = []
@@ -62,7 +72,7 @@ def file_get_catalogs():
             catalogs.append((filename[:-3], size, date))
     return catalogs
 
-def file_get_filelist(orig_path, hash_type = 'sha-1'):
+def file_get_filelist(orig_path, hash_type):
     # links to directories are ignored to avoid recursion fo the instanct
     i = 0
     files = []
@@ -152,7 +162,7 @@ def __db_get_all(name, query, params = ()):
         logger.error("An error occurred: %s" % e)
     return rows
 
-def build_metadata(name, path, hash_type = 'sha-1'):
+def build_metadata(name, path, hash_type = 'sha1'):
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path), ('createdate', date), ('lastmodifdate', date)]
     if hash_type:
@@ -294,7 +304,7 @@ if __name__ == '__main__':
             logger.info("Creating catalog: %s" % args.name)
 
             # we create the header of the datafile
-            hash_type = 'sha-1'
+            hash_type = 'sha1'
             metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
             db_create(args.name, metadata)
 
