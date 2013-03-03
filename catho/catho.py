@@ -59,7 +59,6 @@ def file_hash(filename, hash_type = 'sha1'):
     finally:
         f.close()
     hash = h.hexdigest()
-    del h
     return hash
 
 def file_get_catalogs():
@@ -126,7 +125,7 @@ def __db_create_schema(name):
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
         c.execute("DROP TABLE IF EXISTS CATALOG;")
-        c.execute("CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);")
+        c.execute("CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INTEGER NOT NULL, size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);")
         conn.commit()
         conn.close()
     except sqlite3.Error as e:

@@ -23,7 +23,7 @@ CREATE TABLE METADATA(key TEXT, value TEXT);
 
 
 -- CATALOG table
-CREATE TABLE CATALOG(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INT NOT NULL, size INT NOT NULL, path TEXT NOT NULL, hash TEXT);
+CREATE TABLE CATALOG(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INTEGER NOT NULL, size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);
 -- id sequential id
 -- name file name
 -- date includes time and is represented in unix time > (1970)
