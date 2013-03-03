@@ -269,7 +269,7 @@ if __name__ == '__main__':
     # general options
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-s', '--silent', action='store_true')
-    parser.add_argument('-log', '--create-log', help='creates log file', action='store')
+    parser.add_argument('-l', '--create-log', help='creates log file', action='store')
 
     args = parser.parse_args()
     # logger.debug(args)
@@ -283,7 +283,7 @@ if __name__ == '__main__':
 
     if args.create_log:
         logger.info('logging to file %s')
-        fh = logging.FileHandler('catho.log') # to check RotatingFileHandler
+        fh = logging.FileHandler(args.create_log) # to check RotatingFileHandler
         logger.addHandler(fh)
 
     # we evaluate each command
