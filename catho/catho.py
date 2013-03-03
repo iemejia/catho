@@ -83,6 +83,7 @@ def file_get_filelist(orig_path, hash_type = None):
                     hash = file_hash(fullpath, hash_type)
                 files.append((filename, date, size, path, hash))
                 logger.debug("Adding %s | %s" % (fullpath, hash))
+#                print(sys.getsizeof(files))
             except OSError as oe:
                 if oe.errno == errno.ENOENT:
                     realpath = os.path.realpath(fullpath)
@@ -251,7 +252,6 @@ if __name__ == '__main__':
     add_parser.add_argument('name', action='store', help='catalog name')
     add_parser.add_argument('path', action='store', help='path to index')
     add_parser.add_argument('-f', '--force', help='force', action='store_true')
-    add_parser.add_argument('-H', '--hash', help='add hash info in catalog creation', action='store_true')
 
     # rm command
     rm_parser = subparsers.add_parser('rm', help='removes catalog')
@@ -294,8 +294,8 @@ if __name__ == '__main__':
         # we check that the file exists or if it's forced and we create the cat
         if args.force or not os.path.exists(file_get_catalog_abspath(args.name)):
             logger.info("Creating catalog: %s" % args.name)
-            # for the moment more hash types are not supported (required)
-            hash_type = 'sha-1' if args.hash else None
+
+            hash_type = 'sha-1'
             metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
             files = file_get_filelist(args.path, hash_type)
             db_create(args.name, metadata, files)
