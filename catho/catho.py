@@ -64,11 +64,12 @@ def file_hash(filename, hash_type = 'sha1'):
 def file_get_catalogs():
     catalogs = []
     files = os.listdir(catho_path)
+    ext_len = len(catho_extension)
     for filename in files:
         if filename.endswith(catho_extension):
             fullpath = os.path.join(catho_path, filename)
             size, date = get_file_info(fullpath)
-            catalogs.append((filename[:-3], size, date))
+            catalogs.append((filename[:ext_len], size, date))
     return catalogs
 
 def file_get_filelist(orig_path, hash_type):
