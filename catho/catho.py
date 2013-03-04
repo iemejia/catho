@@ -87,21 +87,23 @@ def file_select_catalogs(selection = []):
 
     return selected
          
-def file_get_filelist(orig_path, hash_type='sha1'):
+def file_get_filelist(fullpath, hash_type='sha1'):
     # links to directories are ignored to avoid recursion fo the instanct
     i = 0
     files = []
-    for dirname, dirnames, filenames in os.walk(orig_path):
+    for dirname, dirnames, filenames in os.walk(fullpath):
         # print(dirname, dirnames, filenames)
         for filename in filenames:
             i += 1
-            path = os.path.join(dirname) # path of the file
-            fullpath = os.path.join(dirname, filename)
+            # this is the complete file path for each directory
+            path = os.path.join(dirname, filename)
+            rel_path = path.replace(fullpath, '')
+            rel_path = rel_path.replace(filename, '')
             try:
-                size, date = get_file_info(fullpath)
-                hash = file_hash(fullpath, hash_type)
-                files.append((filename, date, size, path, hash))
-                logger.debug("Adding %s | %s" % (fullpath, hash))
+                size, date = get_file_info(path)
+                hash = file_hash(path, hash_type)
+                files.append((filename, date, size, rel_path, hash))
+                logger.debug("Adding %s | %s" % (path, hash))
                 if (i == MAX_FILES_ITER):
                     yield files
                     # we restart the accumulators
@@ -109,8 +111,8 @@ def file_get_filelist(orig_path, hash_type='sha1'):
                     files = []
             except OSError as oe:
                 if oe.errno == errno.ENOENT:
-                    realpath = os.path.realpath(fullpath)
-                    logger.error("Ignoring %s. No such target file or directory %s" % (fullpath, realpath))
+                    realpath = os.path.realpath(path)
+                    logger.error("Ignoring %s. No such target file or directory %s" % (path, realpath))
                 else:
                     logger.error("An error occurred processing %s: %s" % (filename,oe))
             except UnicodeDecodeError as ue:
@@ -214,7 +216,7 @@ def metadata_str(name):
 
 def catalog_str(name):
     catalog = db_get_catalog(name)
-    print catalog
+    # print catalog
     s = "CATALOG\n"
     s += '\n'.join('%s\t%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path, hash) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
@@ -222,9 +224,9 @@ def catalog_str(name):
 def catalogs_str():
     catalogs = file_get_catalogs()
     s = ''
-    for catalog, size, timestamp in catalogs:
-        date = str(datetime.fromtimestamp(timestamp))
-        s += '\n{: >0} {: >15} {: >15}'.format(*(catalog, size, date))
+    for catalog in catalogs:
+        date = str(datetime.fromtimestamp(catalog['date']))
+        s += '\n{: >0} {: >15} {: >15}'.format(*(catalog['name'], catalog['size'], date))
     return s
 
 def catalogs_info_str(names):
@@ -338,12 +340,13 @@ if __name__ == '__main__':
 
             # we create the header of the datafile
             hash_type = 'sha1'
-            metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
+            fullpath = os.path.abspath(args.path)
+            metadata = build_metadata(args.name, fullpath, hash_type)
             db_create(args.name)
             db_insert_metadata(args.name, metadata)
 
             # and then we add in subsets the catalog (to avoid overusing memory)
-            filesubsets = file_get_filelist(args.path, hash_type)
+            filesubsets = file_get_filelist(fullpath, hash_type)
             for files in filesubsets:
                 db_insert_catalog(args.name, files)
 
