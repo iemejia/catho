@@ -30,3 +30,15 @@ CREATE TABLE CATALOG(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, d
 -- length file length in bytes
 -- path original path
 -- hash is optional for complete indexing
+
+-- -- optional indexes, to speed queries (can double the size of the db)
+-- CREATE INDEX hash_idx ON CATALOG(hash);
+-- CREATE INDEX file_idx ON CATALOG(path, name);
+-- DROP INDEX hash_idx;
+-- DROP INDEX file_idx;
+
+-- -- optimize DB (erase erased file space, avoid table fragmentation)
+-- VACUUM;
+
+-- -- optimize DB stats (to optimize queries)
+-- ANALYZE;
