@@ -69,8 +69,25 @@ def file_get_catalogs():
         if filename.endswith(catho_extension):
             fullpath = os.path.join(catho_path, filename)
             size, date = get_file_info(fullpath)
-            catalogs.append((filename[:ext_len], size, date))
+            catalogs.append({ 'name' : filename[:-ext_len], 
+                              'size' : size,
+                              'date' : date })
     return catalogs
+
+def file_select_catalogs(selection):
+    catalogs = file_get_catalogs()
+    if not catalogs:
+        selected = [catalog['name'] for catalog in file_get_catalogs()]
+    else:
+        selected = [catalog['name'] for catalog in file_get_catalogs() if catalog['name'] in selection]
+
+        if len(selection) != len(selected):
+            discarded = [s for s in selection if s not in selected]
+            logger.warning('Some catalogs ignored (%s)' % discarded)
+
+    return selected
+         
+
 
 def file_get_filelist(orig_path, hash_type):
     # links to directories are ignored to avoid recursion fo the instanct
@@ -200,6 +217,7 @@ def metadata_str(name):
 
 def catalog_str(name):
     catalog = db_get_catalog(name)
+    print catalog
     s = "CATALOG\n"
     s += '\n'.join('%s\t%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path, hash) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
@@ -222,10 +240,7 @@ def catalogs_info_str(names):
 # Catho operations
 
 def find_in_catalogs(regex, catalogs = None):
-    if catalogs:
-        catalogs = [catalog[0] for catalog in file_get_catalogs() if catalog[0] in catalogs]
-    else:
-        catalogs = [catalog[0] for catalog in file_get_catalogs()]    
+    catalogs = file_select_catalogs(catalogs) 
 
     if len(catalogs) == 0:
         logger.error('Catalog does not exist')
@@ -267,8 +282,8 @@ if __name__ == '__main__':
 
     # find command
     find_parser = subparsers.add_parser('find', help='find a filename in catalog')
-    find_parser.add_argument('name', action='store', help='file name')
-    find_parser.add_argument('catalog', action='store', nargs='?', help='file name')
+    find_parser.add_argument('pattern', action='store', help='a pattern to match')
+    find_parser.add_argument('catalogs', action='append', nargs='*', help='catalog name')
 
     # scan command
     scan_parser = subparsers.add_parser('scan', help='find a filename in catalog')
@@ -326,16 +341,15 @@ if __name__ == '__main__':
         file_rm_catalog_file(args.names)
 
     elif args.command == 'find':
-        #catalogs = []
-        if args.catalog:
-            catalogs = (args.catalog,)
+        if args.catalogs[0]:
+            catalogs = args.catalogs[0]
         else:
-            catalogs =  [catalog[0] for catalog in file_get_catalogs()]
+            catalogs =  [catalog['name'] for catalog in file_get_catalogs()]
 
         str_catalogs = ', '.join(catalogs)
-        logger.info("Finding %s in (%s)" % (args.name, str_catalogs)) 
+        logger.info("Finding %s in (%s)" % (args.pattern, str_catalogs)) 
 
-        items = find_in_catalogs(args.name, catalogs)
+        items = find_in_catalogs(args.pattern, catalogs)
         for item in items:
             logger.info('%s', item)
 
