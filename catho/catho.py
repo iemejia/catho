@@ -69,7 +69,7 @@ def file_get_catalogs():
         if filename.endswith(catho_extension):
             fullpath = os.path.join(catho_path, filename)
             size, date = get_file_info(fullpath)
-            catalogs.append((filename[:ext_len], size, date))
+            catalogs.append((filename[:-ext_len], size, date))
     return catalogs
 
 def file_get_filelist(orig_path, hash_type='sha1'):
