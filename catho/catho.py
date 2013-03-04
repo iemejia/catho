@@ -236,7 +236,27 @@ def catalogs_info_str(names):
 
 # Catho operations
 
-def find_in_catalogs(regex, catalogs = None):
+def find_in_catalogs(pattern, catalogs = None):
+    catalogs = file_select_catalogs(catalogs)
+    patterns = pattern.split('%')
+    patterns = map(lambda s: s.replace('*', '%'), patterns)
+    pattern = '[%]'.join(patterns)
+
+    if len(catalogs) == 0:
+        logger.error('Catalog does not exist')
+
+    query = "SELECT * FROM CATALOG WHERE name LIKE ?"
+
+    items = {}
+    for catalog in catalogs:
+        matches = __db_get_all(catalog, query, (pattern,))
+        if matches:
+            items[catalog] = matches
+
+    return items
+
+
+def find_plus_in_catalogs(regex, catalogs = None):
     catalogs = file_select_catalogs(catalogs) 
 
     if len(catalogs) == 0:
@@ -250,6 +270,7 @@ def find_in_catalogs(regex, catalogs = None):
         items.extend(matches)
 
     return items
+
 
 if __name__ == '__main__':
 
@@ -347,11 +368,17 @@ if __name__ == '__main__':
         str_catalogs = ', '.join(catalogs)
         logger.info("Finding %s in (%s)" % (args.pattern, str_catalogs)) 
 
-        items = find_in_catalogs(args.pattern, catalogs)
-        for item in items:
-            logger.info('%s', item)
+        matches = find_in_catalogs(args.pattern, catalogs)
 
-        logger.info("%s items found" % len(items))
+        count = 0
+        for catalog, items in matches.iteritems():
+            logger.info(catalog)
+            for item in items:
+                count = count + 1
+                logger.info('%s', item)
+
+
+        logger.info("%s items found" % count)
 
     elif args.command == 'scan':
         logger.error("TODO scan %s" % args.name)
