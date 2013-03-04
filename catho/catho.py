@@ -71,7 +71,7 @@ def file_get_catalogs():
             catalogs.append((filename[:-3], size, date))
     return catalogs
 
-def file_get_filelist(orig_path, hash_type):
+def file_get_filelist(orig_path, hash_type='sha1'):
     # links to directories are ignored to avoid recursion fo the instanct
     i = 0
     files = []
@@ -168,15 +168,14 @@ def build_metadata(name, path, hash_type = 'sha1'):
         metadata.append(('hash', hash_type))
     return metadata
 
-def __db_insert_metadata(name, metadata):
+def db_insert_metadata(name, metadata):
     return __db_insert(name, sql_insert_metadata, metadata)
 
-def __db_insert_catalog(name, files):
+def db_insert_catalog(name, files):
     return __db_insert(name, sql_insert_catalog, files)
 
-def db_create(name, path):
+def db_create(name):
     __db_create_schema(name)
-    __db_insert_metadata(name, path)
 
 def db_get_metadata(name):
     return __db_get_all(name, sql_select_metadata)
@@ -305,12 +304,13 @@ if __name__ == '__main__':
             # we create the header of the datafile
             hash_type = 'sha1'
             metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
-            db_create(args.name, metadata)
+            db_create(args.name)
+            db_insert_metadata(metadata)
 
             # and then we add in subsets the catalog (to avoid overusing memory)
             filesubsets = file_get_filelist(args.path, hash_type)
             for files in filesubsets:
-                __db_insert_catalog(args.name, files)
+                db_insert_catalog(args.name, files)
 
         else:
             logger.error("Catalog: %s already exists" % args.name)

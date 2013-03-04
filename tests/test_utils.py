@@ -22,5 +22,13 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(date)
         return
 
+    def test_sizeof_fmt(self):
+        s1 = utils.sizeof_fmt(123456789)
+        s2 = utils.sizeof_fmt(123456789012)
+        s3 = utils.sizeof_fmt(1234)
+        self.assertEqual(s1, '117.7 MB')
+        self.assertEqual(s2, '115.0 GB')
+        self.assertEqual(s3, '1.2 KB')
+
 if __name__ == '__main__':
     unittest.main()
