@@ -319,7 +319,7 @@ if __name__ == '__main__':
             hash_type = 'sha1'
             metadata = build_metadata(args.name, os.path.abspath(args.path), hash_type)
             db_create(args.name)
-            db_insert_metadata(metadata)
+            db_insert_metadata(args.name, metadata)
 
             # and then we add in subsets the catalog (to avoid overusing memory)
             filesubsets = file_get_filelist(args.path, hash_type)
