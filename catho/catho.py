@@ -3,10 +3,10 @@
 
 from datetime import datetime
 from utils import get_file_info
+from utils import file_hash
 import argparse
 import errno
 import glob
-import hashlib
 import logging
 import os
 import sqlite3
@@ -40,27 +40,6 @@ def file_touch_catho_dir():
 
 def file_get_catalog_abspath(name):
     return catho_path + name + catho_extension
-
-def file_hash(filename, hash_type = 'sha1'):
-    """ calculates the hash for the file in filename """
-    """ default implementation calcs sha1 """
-    # todo should we use the git convention for this ?
-    # sha1("blob " + filesize + "\0" + data)
-
-    # if hash_type != 'sha1':
-    #     h = hashlib.new(hash_type) # more generic call
-    h = hashlib.sha1()
-    f = open(filename, 'rb')
-    try:
-        while True:
-            data = f.read(BLOCK_SIZE)
-            if not data:
-                break
-            h.update(data)
-    finally:
-        f.close()
-    hash = h.hexdigest()
-    return hash
 
 def file_get_catalogs():
     catalogs = []
@@ -102,7 +81,7 @@ def file_get_filelist(fullpath, hash_type='sha1'):
             rel_path = rel_path.replace(filename, '')
             try:
                 size, date = get_file_info(path)
-                hash = file_hash(path, hash_type)
+                hash = file_hash(path, BLOCK_SIZE, hash_type)
                 files.append((filename, date, size, rel_path, hash))
                 logger.debug("Adding %s | %s" % (path, hash))
                 if (i == MAX_FILES_ITER):
