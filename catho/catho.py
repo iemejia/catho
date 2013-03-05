@@ -197,7 +197,11 @@ def catalog_str(name):
     catalog = db_get_catalog(name)
     # print catalog
     s = "CATALOG\n"
-    s += '\n'.join('%s\t%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), sizeof_fmt(size), path, hash) for (id, name, date, size, path, hash) in catalog)
+    return catalog_to_str(catalog)
+
+def catalog_to_str(catalog):
+    s = ''
+    s += '\n'.join('%s | %s | %s | %s' % (name, str(datetime.fromtimestamp(date)), sizeof_fmt(size), path) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
 
 def catalogs_str():
@@ -358,11 +362,9 @@ if __name__ == '__main__':
 
         count = 0
         for catalog, items in matches.iteritems():
-            logger.info(catalog)
-            for item in items:
-                count = count + 1
-                logger.info('%s', item)
-
+            count += len(items)
+            logger.info(catalog + ':')
+            logger.info(catalog_to_str(items))
 
         logger.info("%s items found" % count)
 
