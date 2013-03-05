@@ -15,7 +15,10 @@ import time
 import re
 
 VALID_HASH_TYPES = ['sha1']
-MAX_FILES_ITER = 1000
+
+MAX_FILES_ITER = 1024 # number of files read and inserted in the database per iteration
+BLOCK_SIZE = 1048576 # for the pieces used for hash calculation 1MB (2**20), bittorrent sub-hashes are usually less or equal to 512k 256k = 262144
+
 home = os.path.expanduser("~")
 catho_path = home + "/.catho/"
 catho_extension = '.db'
@@ -48,11 +51,9 @@ def file_hash(filename, hash_type = 'sha1'):
     #     h = hashlib.new(hash_type) # more generic call
     h = hashlib.sha1()
     f = open(filename, 'rb')
-    # read the file in 1MB slices to avoid 
-    block_size=2**20
     try:
         while True:
-            data = f.read(block_size)
+            data = f.read(BLOCK_SIZE)
             if not data:
                 break
             h.update(data)
