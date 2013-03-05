@@ -30,5 +30,13 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(s2, '115.0 GB')
         self.assertEqual(s3, '1.2 KB')
 
+    def test_file_hash(self):
+        filename = 'LICENSE';
+        block_size = 1048576
+        h1 = utils.file_hash(filename, block_size, hash_type = 'sha1')
+        print h1
+        self.assertEqual(h1, '2a4bdae6ceb4166ca3f66f937b12208f7b3064f6')
+
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestUtils)
+    unittest.TextTestRunner(verbosity=2).run(suite)
