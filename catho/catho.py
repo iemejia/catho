@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime
-from utils import get_file_info
-from utils import file_hash
+from utils import *
 import argparse
 import errno
 import glob
@@ -198,7 +197,7 @@ def catalog_str(name):
     catalog = db_get_catalog(name)
     # print catalog
     s = "CATALOG\n"
-    s += '\n'.join('%s\t%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), size, path, hash) for (id, name, date, size, path, hash) in catalog)
+    s += '\n'.join('%s\t%s\t%s\t%s\t%s' % (name, str(datetime.fromtimestamp(date)), sizeof_fmt(size), path, hash) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
 
 def catalogs_str():
@@ -252,6 +251,26 @@ def find_plus_in_catalogs(regex, catalogs = None):
         items.extend(matches)
 
     return items
+
+def create_catalog(name, path, force = False):
+    if force or not os.path.exists(file_get_catalog_abspath(name)):
+        logger.info("Creating catalog: %s" % name)
+
+        # we create the header of the datafile
+        hash_type = 'sha1'
+        fullpath = os.path.abspath(path)
+        metadata = build_metadata(name, fullpath, hash_type)
+        db_create(name)
+        db_insert_metadata(name, metadata)
+
+        # and then we add in subsets the catalog (to avoid overusing memory)
+        filesubsets = file_get_filelist(fullpath, hash_type)
+        for files in filesubsets:
+            db_insert_catalog(name, files)
+        return True
+    else:
+        logger.warning("Catalog: %s already exists" % name)
+        return False
 
 
 if __name__ == '__main__':
@@ -315,23 +334,7 @@ if __name__ == '__main__':
 
     elif args.command == 'add':
         # we check that the file exists or if it's forced and we create the cat
-        if args.force or not os.path.exists(file_get_catalog_abspath(args.name)):
-            logger.info("Creating catalog: %s" % args.name)
-
-            # we create the header of the datafile
-            hash_type = 'sha1'
-            fullpath = os.path.abspath(args.path)
-            metadata = build_metadata(args.name, fullpath, hash_type)
-            db_create(args.name)
-            db_insert_metadata(args.name, metadata)
-
-            # and then we add in subsets the catalog (to avoid overusing memory)
-            filesubsets = file_get_filelist(fullpath, hash_type)
-            for files in filesubsets:
-                db_insert_catalog(args.name, files)
-
-        else:
-            logger.error("Catalog: %s already exists" % args.name)
+        create_catalog(args.name, args.path, args.force)
 
     elif args.command == 'ls':
         if not args.names:
