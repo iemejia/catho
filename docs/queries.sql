@@ -25,3 +25,11 @@ SELECT sum(size) FROM catalog WHERE name LIKE '%.mp3';
 
 -- most repeated file by name (curious, usually is index.html)
 SELECT max(num_names), name FROM (SELECT count(name) as num_names, name FROM catalog GROUP BY name having(COUNT(name) > 1));
+
+-- fix for the full prefix in catalog (not tested)
+UPDATE catalog SET path=REPLACE(path, '/Users/ismael/', '/') WHERE path LIKE '/Users/ismael%';
+
+-- optimize the sqlite3 database
+VACUUM;
+ANALYZE;
+
