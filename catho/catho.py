@@ -221,16 +221,16 @@ def find_in_catalogs(pattern, catalogs = None):
     catalogs = file_select_catalogs(catalogs)
     patterns = pattern.split('%')
     patterns = map(lambda s: s.replace('*', '%'), patterns)
-    pattern = '[%]'.join(patterns)
+    pattern = '%' + '[%]'.join(patterns) + '%'
 
     if len(catalogs) == 0:
         logger.error('Catalog does not exist')
 
-    query = "SELECT * FROM CATALOG WHERE name LIKE ?"
+    query = "SELECT * FROM CATALOG WHERE name LIKE ? or path LIKE ?;"
 
     items = {}
     for catalog in catalogs:
-        matches = __db_get_all(catalog, query, (pattern,))
+        matches = __db_get_all(catalog, query, (pattern, pattern))
         if matches:
             items[catalog] = matches
 
