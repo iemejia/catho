@@ -15,6 +15,11 @@ Installation
 
 TODO
 
+Requirements
+------------
+
+Python version < 2.7
+pip install argparse
 
 Use
 ----------
@@ -28,11 +33,10 @@ Use
     # Remove a catalog
     catho rm name
 
-    # Search for expr (filename) in all catalogs
-    catho search expr
+    # Search for filenames matching with a pattern (ex. *.zip, c*.*)
+      in some catalogs or in all if none is provided
 
-    # Search for expr (filename) in a specific catalog
-    catho search name expr
+    catho find pattern [catalog1] [catalog2] [catalogn]
 
     # List all catalogs
     catho ls
