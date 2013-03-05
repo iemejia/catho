@@ -18,8 +18,8 @@ TODO
 Requirements
 ------------
 
-Python version < 2.7
-pip install argparse
+For python < 2.7
+```pip install argparse```
 
 Use
 ----------
@@ -33,8 +33,7 @@ Use
     # Remove a catalog
     catho rm name
 
-    # Search for filenames matching with a pattern (ex. *.zip, c*.*)
-      in some catalogs or in all if none is provided
+    # Search for filenames matching with a pattern (ex. *.zip, c*.*) in some catalogs or in all if none is provided
 
     catho find pattern [catalog1] [catalog2] [catalogn]
 
