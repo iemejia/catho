@@ -28,7 +28,7 @@ logger.addHandler(ch)
 logger.setLevel(logging.INFO)
 
 sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
-sql_insert_catalog = 'INSERT INTO CATALOG (name, date, size, path, hash) VALUES (?,?,?,?,?)'
+sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VALUES (?,?,?,?,?,?)'
 sql_select_metadata = "SELECT * FROM METADATA;"
 sql_select_catalog = "SELECT * FROM CATALOG;"
 sql_delete_catalog = "DELETE FROM catalog where id IN "
@@ -84,8 +84,9 @@ def path_block_iterator(fullpath, num_files):
             rel_path = rel_path.replace(filename, '')
             try:
                 size, date = get_file_info(path)
+                id = None # since the filesystem doesn't identify ids, added to have simmetry with the db registrs
                 hash = None
-                files.append((filename, date, size, rel_path, hash))
+                files.append((id, filename, date, size, rel_path, hash))
                 if i == num_files:
                     yield files
                     # we restart the accumulators
@@ -109,12 +110,12 @@ def calc_hashes(fullpath, files, hash_type='sha1'):
     """ it has not been calculated """
     """ returns a list of tuples with the hash calculated """
     hashed_files = []
-    for name, date, size, path, hash in files:
+    for id, name, date, size, path, hash in files:
         if not hash:
             file_path = fullpath + path + name
             hash = file_hash(file_path, BLOCK_SIZE, hash_type)
             logger.debug("Calculating %s for %s | %s" % (hash_type, name, hash))
-            hashed_files.append((name, date, size, path, hash))
+            hashed_files.append((id, name, date, size, path, hash))
     return hashed_files
 
 def file_rm_catalog_file(catalogs):
@@ -275,16 +276,14 @@ def find_plus_in_catalogs(regex, catalogs = None):
 
 def db_build_select_string(files):
     s = []
-    for name, date, size, path, hash in files:
+    for id, name, date, size, path, hash in files:
         s.append("NAME = '%s' AND PATH = '%s' AND size = %s AND date = %s" % (name, path, size, date))
     return 'SELECT * FROM catalog WHERE ' + ' OR '.join(s)
 
 def file_equals(file, db_file):
     """ an equals for the tuple """
     for i in range(4):
-        # this is a tricky hack since the first element of db_tuples is the pk index
-        # TOFIX
-        if file[i] != db_file[i+1]:
+        if file[i] != db_file[i]:
             return False
     return True
     
@@ -303,8 +302,7 @@ def update_catalog(name, path):
     if os.path.exists(file_get_catalog_abspath(name)):
         # we check that it's the same catalog
         fullpath = os.path.abspath(path)
-        metadata = db_get_metadata(name)
-        m = list_of_tuples_to_dir(metadata)
+        m = db_get_metadata(name)
         if name == m['name'] and fullpath == m['fullpath']:
             print 's'
             filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
