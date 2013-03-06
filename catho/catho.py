@@ -31,6 +31,7 @@ sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
 sql_insert_catalog = 'INSERT INTO CATALOG (name, date, size, path, hash) VALUES (?,?,?,?,?)'
 sql_select_metadata = "SELECT * FROM METADATA;"
 sql_select_catalog = "SELECT * FROM CATALOG;"
+sql_delete_catalog = "DELETE FROM catalog where id IN "
 
 # file functions
 def file_touch_catho_dir():
@@ -143,7 +144,7 @@ def __db_create_schema(name):
     except sqlite3.Error as e:
         logger.error("An error occurred: %s" % e)
 
-def __db_insert(name, query, l):
+def __db_executemany(name, query, l):
     """Generic insert invocation in name db"""
     try:
         conn = sqlite3.connect(file_get_catalog_abspath(name))
@@ -181,16 +182,17 @@ def build_metadata(name, path, fullpath, hash_type = 'sha1'):
     return metadata
 
 def db_insert_metadata(name, metadata):
-    return __db_insert(name, sql_insert_metadata, metadata)
+    return __db_executemany(name, sql_insert_metadata, metadata)
 
 def db_insert_catalog(name, files):
-    return __db_insert(name, sql_insert_catalog, files)
+    return __db_executemany(name, sql_insert_catalog, files)
 
 def db_create(name):
     __db_create_schema(name)
 
 def db_get_metadata(name):
-    return __db_get_all(name, sql_select_metadata)
+    l = __db_get_all(name, sql_select_metadata)
+    return list_of_tuples_to_dir(l)
 
 def db_get_catalog(name):
     return __db_get_all(name, sql_select_catalog)
@@ -205,8 +207,8 @@ def db_regex(pattern, string):
 def metadata_str(name):
     meta = db_get_metadata(name)
     s = "METADATA\n"
-    s += '\n'.join('%s: \t%s' % (key, value) for (key, value) in meta)
-    return s + '\n'
+    s += '\n'.join('%s: \t%s' % (key, value) for (key, value) in meta.items())
+    return s
 
 def catalog_str(name):
     catalog = db_get_catalog(name)
