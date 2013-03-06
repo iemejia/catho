@@ -39,3 +39,9 @@ def file_hash(filename, block_size, hash_type = 'sha1'):
         f.close()
     hash = h.hexdigest()
     return hash
+
+def list_of_tuples_to_dir(l):
+    d = {}
+    for k,v in l:
+        d.setdefault(k, v)
+    return d

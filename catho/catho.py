@@ -173,9 +173,9 @@ def __db_get_all(name, query, params = ()):
         logger.error("An error occurred: %s" % e)
     return rows
 
-def build_metadata(name, path, hash_type = 'sha1'):
+def build_metadata(name, path, fullpath, hash_type = 'sha1'):
     date = str(int(time.time()))
-    metadata = [('version', '1'), ('name', name), ('path', path), ('createdate', date), ('lastmodifdate', date)]
+    metadata = [('version', '1'), ('name', name), ('path', path), ('fullpath', fullpath), ('createdate', date), ('lastmodifdate', date)]
     if hash_type:
         metadata.append(('hash', hash_type))
     return metadata
@@ -271,14 +271,62 @@ def find_plus_in_catalogs(regex, catalogs = None):
 
     return items
 
+def db_build_select_string(files):
+    s = []
+    for name, date, size, path, hash in files:
+        s.append("NAME = '%s' AND PATH = '%s' AND size = %s AND date = %s" % (name, path, size, date))
+    return 'SELECT * FROM catalog WHERE ' + ' OR '.join(s)
+
+def file_equals(file, db_file):
+    """ an equals for the tuple """
+    for i in range(4):
+        # this is a tricky hack since the first element of db_tuples is the pk index
+        # TOFIX
+        if file[i] != db_file[i+1]:
+            return False
+    return True
+    
+def get_non_inserted_files(files, inserted_files):
+    non_inserted_files = []
+    for file in files:
+        exists_in_db = False
+        for inserted_file in inserted_files:
+            if file_equals(file, inserted_file):
+                exists_in_db = True
+        if not exists_in_db:
+            non_inserted_files.append(file)
+    return non_inserted_files
+
+def update_catalog(name, path):
+    if os.path.exists(file_get_catalog_abspath(name)):
+        # we check that it's the same catalog
+        fullpath = os.path.abspath(path)
+        metadata = db_get_metadata(name)
+        m = list_of_tuples_to_dir(metadata)
+        if name == m['name'] and fullpath == m['fullpath']:
+            print 's'
+            filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
+            for files in filesubsets:
+                query = db_build_select_string(files)
+                inserted_files =  __db_get_all(name, query)
+                # we find the new or updated files in the path
+                # we are probably missing another pass to remove the files who don't exist anymore from the db, probably in a different method
+                non_inserted_files = get_non_inserted_files(files, inserted_files)
+                logger.info('Updating missing files...')
+                hashed_files = calc_hashes(fullpath, non_inserted_files)
+                # db_insert_catalog(name, hashed_files)
+        else:
+            logger.warning('impossible to continue invalid name or path  %s:%s' % (name, fullpath))
+    else:
+        logger.warning('catalog %s not found.' % name)
+
 def create_catalog(name, path, force = False):
     if force or not os.path.exists(file_get_catalog_abspath(name)):
         logger.info("Creating catalog: %s" % name)
 
         # we create the header of the datafile
-        hash_type = 'sha1'
         fullpath = os.path.abspath(path)
-        metadata = build_metadata(name, fullpath, hash_type)
+        metadata = build_metadata(name, path, fullpath, hash_type = 'sha1')
         db_create(name)
         db_insert_metadata(name, metadata)
 
@@ -314,7 +362,7 @@ if __name__ == '__main__':
     add_parser.add_argument('name', action='store', help='catalog name')
     add_parser.add_argument('path', action='store', help='path to index')
     add_parser.add_argument('-f', '--force', help='force', action='store_true')
-    add_parser.add_argument('-c', '--cont', help='continue', action='store_true')
+    add_parser.add_argument('-c', '--continue', help='continue', action='store_true', dest='cont')
 
     # rm command
     rm_parser = subparsers.add_parser('rm', help='removes catalog')
@@ -354,8 +402,10 @@ if __name__ == '__main__':
         file_touch_catho_dir()
 
     elif args.command == 'add':
-        # we check that the file exists or if it's forced and we create the cat
-        create_catalog(args.name, args.path, args.force)
+        if not args.cont:
+            create_catalog(args.name, args.path, args.force)
+        else:
+            update_catalog(args.name, args.path)
 
     elif args.command == 'ls':
         if not args.names:

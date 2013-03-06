@@ -22,20 +22,12 @@ class TestCatalog(unittest.TestCase):
         filelist = catho.path_block_iterator(self.path, 10)
         for files in filelist:
             self.assertTrue(len(files) <= 10)
-        
-    def build_metadata(self):
-        return catho.build_metadata(self.name, os.path.abspath(self.path))
-
-    def test_build_metadata(self):
-        self.metadata = self.build_metadata()
-        self.assertTrue(self.metadata)
-        self.assertEqual(len(self.metadata), 6)
 
     def test_db_get_metadata(self):
         catho.create_catalog(self.name, self.path)
         metadata = catho.db_get_metadata(self.name)
         self.assertTrue(metadata)
-        self.assertTrue(len(metadata) == 6)
+        self.assertTrue(len(metadata) == 7)
 
     def test_db_get_catalog(self):
         catho.create_catalog(self.name, self.path)
