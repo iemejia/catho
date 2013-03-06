@@ -65,8 +65,11 @@ def file_select_catalogs(selection = []):
             logger.warning('Some catalogs ignored (%s)' % discarded)
 
     return selected
-         
-def file_get_filelist(fullpath, hash_type='sha1'):
+
+def path_block_iterator(fullpath, num_files):
+    """ returns an iterator of a subcollection of files for the given size: """
+    """ path in blocks of size num_files, it constructs a collection  """
+    """ of fileitems """
     # links to directories are ignored to avoid recursion fo the instanct
     i = 0
     files = []
@@ -80,10 +83,9 @@ def file_get_filelist(fullpath, hash_type='sha1'):
             rel_path = rel_path.replace(filename, '')
             try:
                 size, date = get_file_info(path)
-                hash = file_hash(path, BLOCK_SIZE, hash_type)
+                hash = None
                 files.append((filename, date, size, rel_path, hash))
-                logger.debug("Adding %s | %s" % (path, hash))
-                if (i == MAX_FILES_ITER):
+                if i == num_files:
                     yield files
                     # we restart the accumulators
                     i = 0
@@ -100,6 +102,19 @@ def file_get_filelist(fullpath, hash_type='sha1'):
                 logger.error("An error occurred processing %s: %s" % (filename, ioe))
 
     yield files
+
+def calc_hashes(fullpath, files, hash_type='sha1'):
+    """ calc the hash value for each of the elements of the collection if """
+    """ it has not been calculated """
+    """ returns a list of tuples with the hash calculated """
+    hashed_files = []
+    for name, date, size, path, hash in files:
+        if not hash:
+            file_path = fullpath + path + name
+            hash = file_hash(file_path, BLOCK_SIZE, hash_type)
+            logger.debug("Calculating %s for %s | %s" % (hash_type, name, hash))
+            hashed_files.append((name, date, size, path, hash))
+    return hashed_files
 
 def file_rm_catalog_file(catalogs):
     """ deletes the list of cats """
@@ -268,9 +283,10 @@ def create_catalog(name, path, force = False):
         db_insert_metadata(name, metadata)
 
         # and then we add in subsets the catalog (to avoid overusing memory)
-        filesubsets = file_get_filelist(fullpath, hash_type)
+        filesubsets = path_block_iterator(fullpath, hash_type)
         for files in filesubsets:
-            db_insert_catalog(name, files)
+            hashed_files = calc_hashes(fullpath, files)
+            db_insert_catalog(name, hashed_files)
         return True
     else:
         logger.warning("Catalog: %s already exists" % name)
@@ -298,6 +314,7 @@ if __name__ == '__main__':
     add_parser.add_argument('name', action='store', help='catalog name')
     add_parser.add_argument('path', action='store', help='path to index')
     add_parser.add_argument('-f', '--force', help='force', action='store_true')
+    add_parser.add_argument('-c', '--cont', help='continue', action='store_true')
 
     # rm command
     rm_parser = subparsers.add_parser('rm', help='removes catalog')
