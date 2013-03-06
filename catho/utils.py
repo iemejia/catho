@@ -4,6 +4,16 @@
 import os
 import hashlib
 
+def file_touch_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def file_touch_file(name):
+    if os.path.exists(name):
+        os.utime(name, None)
+    else:
+        open(name, 'w').close()
+
 def get_file_info(fullpath):
     """ Return the size and the date for a filename"""
     stat = os.stat(fullpath)

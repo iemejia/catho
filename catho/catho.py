@@ -31,12 +31,11 @@ sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
 sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VALUES (?,?,?,?,?,?)'
 sql_select_metadata = "SELECT * FROM METADATA;"
 sql_select_catalog = "SELECT * FROM CATALOG;"
-sql_delete_catalog = "DELETE FROM catalog where id IN "
+sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
 
 # file functions
 def file_touch_catho_dir():
-    if not os.path.exists(catho_path):
-        os.makedirs(catho_path)
+    file_touch_dir(catho_path)
 
 def file_get_catalog_abspath(name):
     return catho_path + name + catho_extension
@@ -301,8 +300,8 @@ def db_build_select_string(files):
     return 'SELECT * FROM catalog WHERE ' + ' OR '.join(s)
 
 def file_equals(file, db_file):
-    """ an equals for the tuple """
-    for i in range(4):
+    """ compares two file items, for their name, path, size, date """
+    for i in range(1,5):
         if file[i] != db_file[i]:
             return False
     return True
@@ -318,23 +317,45 @@ def get_non_inserted_files(files, inserted_files):
             non_inserted_files.append(file)
     return non_inserted_files
 
+def db_delete_catalog(name, l):
+    """ deletes the rows the list of ids l from the catalog"""
+    query =  sql_delete_catalog % ",".join(map(str,l))
+    """Creates the db schema"""
+    try:
+        conn = sqlite3.connect(file_get_catalog_abspath(name))
+        conn.text_factory = str
+        c = conn.cursor()
+        logger.debug('SQL: Executing %s' % query)
+        c.execute(query)
+        conn.commit()
+        conn.close()
+    except sqlite3.Error as e:
+        logger.error("An error occurred: %s" % e)
+
 def update_catalog(name, path):
     if os.path.exists(file_get_catalog_abspath(name)):
         # we check that it's the same catalog
         fullpath = os.path.abspath(path)
         m = db_get_metadata(name)
         if name == m['name'] and fullpath == m['fullpath']:
-            print 's'
+            # we find the files who exist in the catalog but that have
+            # been deleted in the path, and we remove them from the
+            # database
+            deleted_ids = db_get_deleted_ids(name)
+            if deleted_ids:
+                logger.info("Updating removed files in the filesystem")
+                db_delete_catalog(name, deleted_ids)
+
             filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
             for files in filesubsets:
                 query = db_build_select_string(files)
                 inserted_files =  __db_get_all(name, query)
                 # we find the new or updated files in the path
-                # we are probably missing another pass to remove the files who don't exist anymore from the db, probably in a different method
                 non_inserted_files = get_non_inserted_files(files, inserted_files)
-                logger.info('Updating missing files...')
-                hashed_files = calc_hashes(fullpath, non_inserted_files)
-                # db_insert_catalog(name, hashed_files)
+                if non_inserted_files:
+                    logger.info('Updating missing files in the catalog')
+                    hashed_files = calc_hashes(fullpath, non_inserted_files)
+                    db_insert_catalog(name, hashed_files)
         else:
             logger.warning('impossible to continue invalid name or path  %s:%s' % (name, fullpath))
     else:

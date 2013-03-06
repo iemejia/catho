@@ -8,6 +8,7 @@ import unittest
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from catho import catho
+from catho import utils
 
 class TestCatalog(unittest.TestCase):
     def setUp(self):
@@ -98,6 +99,12 @@ class TestCatalog(unittest.TestCase):
         items = catho.find_in_catalogs('not_existing_file.ext', (self.name, self.name + '_copy'))
         items = [f for catalog, files in items.iteritems() for f in files]
         self.assertTrue(len(items) == 0)      
+
+    def test_update_catalog(self):
+        catho.create_catalog(self.name, self.path)
+        utils.file_touch_file(self.name + "2")
+        utils.file_touch_file(self.name + "3")
+        catho.update_catalog(self.name, self.path)
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestCatalog)
