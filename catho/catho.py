@@ -201,7 +201,7 @@ def catalog_str(name):
 
 def catalog_to_str(catalog):
     s = ''
-    s += '\n'.join('%s | %s | %s | %s' % (name, str(datetime.fromtimestamp(date)), sizeof_fmt(size), path) for (id, name, date, size, path, hash) in catalog)
+    s += '\n'.join('%s | %s | %s | %s' % (name, datetime.fromtimestamp(date).isoformat(), size, path) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
 
 def catalogs_str():
