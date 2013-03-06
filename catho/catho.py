@@ -283,7 +283,7 @@ def create_catalog(name, path, force = False):
         db_insert_metadata(name, metadata)
 
         # and then we add in subsets the catalog (to avoid overusing memory)
-        filesubsets = path_block_iterator(fullpath, hash_type)
+        filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
         for files in filesubsets:
             hashed_files = calc_hashes(fullpath, files)
             db_insert_catalog(name, hashed_files)

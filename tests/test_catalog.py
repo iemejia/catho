@@ -18,9 +18,10 @@ class TestCatalog(unittest.TestCase):
         self.metadata = []
         self.catalog = []
 
-    def test_file_get_filelist(self):
-        filelist = catho.file_get_filelist(self.path)
-        self.assertTrue(filelist)
+    def test_path_block_iterator(self):
+        filelist = catho.path_block_iterator(self.path, 10)
+        for files in filelist:
+            self.assertTrue(len(files) <= 10)
         
     def build_metadata(self):
         return catho.build_metadata(self.name, os.path.abspath(self.path))
