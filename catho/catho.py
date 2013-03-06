@@ -175,6 +175,26 @@ def __db_get_all(name, query, params = ()):
         logger.error("An error occurred: %s" % e)
     return rows
 
+def db_get_deleted_ids(name):
+    """Return a list of ids of the items that exist in the database but don't exist""" 
+    """anymore in the filesystem"""
+    m = db_get_metadata(name)
+    deleted = []
+    try:
+        conn = sqlite3.connect(file_get_catalog_abspath(name))
+        conn.text_factory = str
+        c = conn.cursor()
+        logger.debug('SQL: Executing %s' % sql_select_catalog)
+        for id, name, date, size, path, hash in c.execute(sql_select_catalog):
+            filename = m['fullpath'] + path + name
+            if not os.path.isfile(filename):
+                deleted.append(id)
+        conn.close()
+    except sqlite3.Error as e:
+        logger.error("An error occurred: %s" % e)
+    return deleted
+
+
 def build_metadata(name, path, fullpath, hash_type = 'sha1'):
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path), ('fullpath', fullpath), ('createdate', date), ('lastmodifdate', date)]
