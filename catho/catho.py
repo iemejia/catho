@@ -32,13 +32,14 @@ sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VAL
 sql_select_metadata = "SELECT * FROM METADATA;"
 sql_select_catalog = "SELECT * FROM CATALOG;"
 sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
+sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? AND size = ? AND date = ?;'
 
 # file functions
 def file_touch_catho_dir():
     file_touch_dir(catho_path)
 
 def file_get_catalog_abspath(name):
-    return catho_path + name + catho_extension
+    return os.path.join(catho_path, name + catho_extension)
 
 def file_get_catalogs():
     catalogs = []
@@ -68,7 +69,7 @@ def file_select_catalogs(selection = []):
 
 def path_block_iterator(fullpath, num_files):
     """ returns an iterator of a subcollection of files for the given size: """
-    """ path in blocks of size num_files, it constructs a collection  """
+    """ path in blocks of size num_files, it contructs a collection  """
     """ of fileitems """
     # links to directories are ignored to avoid recursion fo the instanct
     i = 0
@@ -175,6 +176,26 @@ def __db_get_all(name, query, params = ()):
         logger.error("An error occurred: %s" % e)
     return rows
 
+def __db_get_some(name, query, params = []):
+    """Generic query invocation in name db"""
+    # TOFIX this method is too hacky, we have to fix this
+    rows = []
+    try:
+        conn = sqlite3.connect(file_get_catalog_abspath(name))
+        conn.text_factory = str
+        conn.create_function("REGEX", 2, db_regex)
+        c = conn.cursor()
+        for param in params:
+            logger.debug('SQL: Executing %s %s' % (query, param))
+            c.execute(query, param)
+            rs = c.fetchall()
+            for r in rs:
+                rows.append(r)
+        conn.close()
+    except sqlite3.Error as e:
+        logger.error("An error occurred: %s" % e)
+    return rows
+
 def db_get_deleted_ids(name):
     """Return a list of ids of the items that exist in the database but don't exist""" 
     """anymore in the filesystem"""
@@ -186,7 +207,7 @@ def db_get_deleted_ids(name):
         c = conn.cursor()
         logger.debug('SQL: Executing %s' % sql_select_catalog)
         for id, name, date, size, path, hash in c.execute(sql_select_catalog):
-            filename = m['fullpath'] + path + name
+            filename = os.path.join(m['fullpath'], path, name)
             if not os.path.isfile(filename):
                 deleted.append(id)
         conn.close()
@@ -294,17 +315,10 @@ def find_plus_in_catalogs(regex, catalogs = None):
 
     return items
 
-def db_build_select_string(files):
-    s = []
-    for id, name, date, size, path, hash in files:
-        s.append("NAME = '%s' AND PATH = '%s' AND size = %s AND date = %s" % (name, path, size, date))
-# str.replace('"', '\\"')
-    return 'SELECT * FROM catalog WHERE ' + ' OR '.join(s)
-
-def file_equals(file, db_file):
+def file_equals(file1, file2):
     """ compares two file items, for their name, path, size, date """
     for i in range(1,5):
-        if file[i] != db_file[i]:
+        if file1[i] != file2[i]:
             return False
     return True
     
@@ -334,6 +348,12 @@ def db_delete_catalog(name, l):
     except sqlite3.Error as e:
         logger.error("An error occurred: %s" % e)
 
+def __build_select_catalog_cond_params(files):
+    l = []
+    for id, name, date, size, path, hash in files:
+        l.append((name, path, size, date))
+    return l
+
 def update_catalog(name, path):
     if os.path.exists(file_get_catalog_abspath(name)):
         # we check that it's the same catalog
@@ -350,8 +370,8 @@ def update_catalog(name, path):
 
             filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
             for files in filesubsets:
-                query = db_build_select_string(files)
-                inserted_files =  __db_get_all(name, query)
+                l = __build_select_catalog_cond_params(files)
+                inserted_files = __db_get_some(name, sql_select_catalog_cond, l)
                 # we find the new or updated files in the path
                 non_inserted_files = get_non_inserted_files(files, inserted_files)
                 if non_inserted_files:
