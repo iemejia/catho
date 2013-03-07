@@ -8,10 +8,7 @@ import os
 catho_path = os.path.join(os.path.expanduser("~"), ".catho")
 catho_extension = '.db'
 
-logger = logging.getLogger('file')
-ch = logging.StreamHandler()
-logger.addHandler(ch)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger('catho')
 
 def file_get_catalog_abspath(name):
     return os.path.join(catho_path, name + catho_extension)

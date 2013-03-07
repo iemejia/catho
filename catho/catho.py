@@ -78,7 +78,7 @@ def find_in_catalogs(pattern, catalogs = None):
 
     items = {}
     for catalog in catalogs:
-        matches = __db_get_all(catalog, query, (pattern, pattern))
+        matches = db_get_all(catalog, query, (pattern, pattern))
         if matches:
             items[catalog] = matches
 
@@ -95,7 +95,7 @@ def find_plus_in_catalogs(regex, catalogs = None):
 
     items = [] 
     for catalog in catalogs:
-        matches = __db_get_all(catalog, query, (regex,))
+        matches = db_get_all(catalog, query, (regex,))
         items.extend(matches)
 
     return items
@@ -219,8 +219,8 @@ if __name__ == '__main__':
     # logger.debug(args)
 
     if args.verbose:
-        logging.setLevel(logging.DEBUG)
-        # logger.setLevel(logging.DEBUG)
+        #logging.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     if args.silent:
         logger.removeHandler(ch)
