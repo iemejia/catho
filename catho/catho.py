@@ -74,17 +74,18 @@ def path_block_iterator(fullpath, num_files):
     i = 0
     files = []
     for dirname, dirnames, filenames in os.walk(fullpath):
-        # print(dirname, dirnames, filenames)
+        # logger.debug(dirname, dirnames, filenames)
         for filename in filenames:
             i += 1
-            # this is the complete file path for each directory
-            path = os.path.join(dirname, filename)
-            rel_path = path.replace(fullpath, '')
-            rel_path = rel_path.replace(filename, '')
             try:
+                rel_path = os.path.relpath(dirname, fullpath)
+
+                # this is the complete file path for each file
+                path = os.path.join(dirname, filename)
                 size, date = get_file_info(path)
                 id = None # since the filesystem doesn't identify ids, added to have simmetry with the db registrs
                 hash = None
+                # logger.debug((id, filename, date, size, rel_path, hash))
                 files.append((id, filename, date, size, rel_path, hash))
                 if i == num_files:
                     yield files
@@ -111,7 +112,7 @@ def calc_hashes(fullpath, files, hash_type='sha1'):
     hashed_files = []
     for id, name, date, size, path, hash in files:
         if not hash:
-            file_path = fullpath + path + name
+            file_path = os.path.join(fullpath, path, name)
             hash = file_hash(file_path, BLOCK_SIZE, hash_type)
             logger.debug("Calculating %s for %s | %s" % (hash_type, name, hash))
             hashed_files.append((id, name, date, size, path, hash))
@@ -297,6 +298,7 @@ def db_build_select_string(files):
     s = []
     for id, name, date, size, path, hash in files:
         s.append("NAME = '%s' AND PATH = '%s' AND size = %s AND date = %s" % (name, path, size, date))
+# str.replace('"', '\\"')
     return 'SELECT * FROM catalog WHERE ' + ' OR '.join(s)
 
 def file_equals(file, db_file):
@@ -415,7 +417,7 @@ if __name__ == '__main__':
     find_parser.add_argument('catalogs', action='append', nargs='*', help='catalog name')
 
     # scan command
-    scan_parser = subparsers.add_parser('scan', help='find a filename in catalog')
+    scan_parser = subparsers.add_parser('scan', help='scan if the corresponding arg exists in the catalog')
     scan_parser.add_argument('name', action='store', help='path name')
 
     # general options

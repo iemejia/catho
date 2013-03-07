@@ -14,6 +14,13 @@ def file_touch_file(name):
     else:
         open(name, 'w').close()
 
+def file_rm(name):
+    if os.path.exists(name):
+        if os.path.isdir(name):
+            os.removedirs(path)
+        else:
+            os.remove(path)
+
 def get_file_info(fullpath):
     """ Return the size and the date for a filename"""
     stat = os.stat(fullpath)
