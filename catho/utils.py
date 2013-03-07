@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import os
 import hashlib
+
+# this file contains the utils that are global not only to catho, but
+# eventually to any other project, so it should not have any
+# dependencies apart of python core libraries
 
 def file_touch_dir(path):
     if not os.path.exists(path):

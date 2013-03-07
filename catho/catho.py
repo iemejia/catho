@@ -3,12 +3,11 @@
 
 from datetime import datetime
 from utils import *
+from file import *
+from db import *
 import argparse
-import errno
-import glob
 import logging
 import os
-import sqlite3
 import sys
 import time
 import re
@@ -18,203 +17,12 @@ VALID_HASH_TYPES = ['sha1']
 MAX_FILES_ITER = 1024 # number of files read and inserted in the database per iteration
 BLOCK_SIZE = 1048576 # for the pieces used for hash calculation 1MB (2**20), bittorrent sub-hashes are usually less or equal to 512k 256k = 262144
 
-home = os.path.expanduser("~")
-catho_path = home + "/.catho/"
-catho_extension = '.db'
-
 logger = logging.getLogger('catho')
 ch = logging.StreamHandler()
 logger.addHandler(ch)
 logger.setLevel(logging.INFO)
 
-sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
-sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VALUES (?,?,?,?,?,?)'
-sql_select_metadata = "SELECT * FROM METADATA;"
-sql_select_catalog = "SELECT * FROM CATALOG;"
-sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
-sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? AND size = ? AND date = ?;'
-
 # file functions
-def file_touch_catho_dir():
-    file_touch_dir(catho_path)
-
-def file_get_catalog_abspath(name):
-    return os.path.join(catho_path, name + catho_extension)
-
-def file_get_catalogs():
-    catalogs = []
-    files = os.listdir(catho_path)
-    ext_len = len(catho_extension)
-    for filename in files:
-        if filename.endswith(catho_extension):
-            fullpath = os.path.join(catho_path, filename)
-            size, date = get_file_info(fullpath)
-            catalogs.append({ 'name' : filename[:-ext_len], 
-                              'size' : size,
-                              'date' : date })
-    return catalogs
-
-def file_select_catalogs(selection = []):
-    catalogs = file_get_catalogs()
-    if not selection:
-        selected = [catalog['name'] for catalog in file_get_catalogs()]
-    else:
-        selected = [catalog['name'] for catalog in file_get_catalogs() if catalog['name'] in selection]
-
-        if len(selection) != len(selected):
-            discarded = [s for s in selection if s not in selected]
-            logger.warning('Some catalogs ignored (%s)' % discarded)
-
-    return selected
-
-def path_block_iterator(fullpath, num_files):
-    """ returns an iterator of a subcollection of files for the given size: """
-    """ path in blocks of size num_files, it contructs a collection  """
-    """ of fileitems """
-    # links to directories are ignored to avoid recursion fo the instanct
-    i = 0
-    files = []
-    for dirname, dirnames, filenames in os.walk(fullpath):
-        # logger.debug(dirname, dirnames, filenames)
-        for filename in filenames:
-            i += 1
-            try:
-                rel_path = os.path.relpath(dirname, fullpath)
-
-                # this is the complete file path for each file
-                path = os.path.join(dirname, filename)
-                size, date = get_file_info(path)
-                id = None # since the filesystem doesn't identify ids, added to have simmetry with the db registrs
-                hash = None
-                # logger.debug((id, filename, date, size, rel_path, hash))
-                files.append((id, filename, date, size, rel_path, hash))
-                if i == num_files:
-                    yield files
-                    # we restart the accumulators
-                    i = 0
-                    files = []
-            except OSError as oe:
-                if oe.errno == errno.ENOENT:
-                    realpath = os.path.realpath(path)
-                    logger.error("Ignoring %s. No such target file or directory %s" % (path, realpath))
-                else:
-                    logger.error("An error occurred processing %s: %s" % (filename,oe))
-            except UnicodeDecodeError as ue:
-                logger.error("An error occurred processing %s: %s" % (filename, ue))
-            except IOError as ioe:
-                logger.error("An error occurred processing %s: %s" % (filename, ioe))
-
-    yield files
-
-def calc_hashes(fullpath, files, hash_type='sha1'):
-    """ calc the hash value for each of the elements of the collection if """
-    """ it has not been calculated """
-    """ returns a list of tuples with the hash calculated """
-    hashed_files = []
-    for id, name, date, size, path, hash in files:
-        if not hash:
-            file_path = os.path.join(fullpath, path, name)
-            hash = file_hash(file_path, BLOCK_SIZE, hash_type)
-            logger.debug("Calculating %s for %s | %s" % (hash_type, name, hash))
-            hashed_files.append((id, name, date, size, path, hash))
-    return hashed_files
-
-def file_rm_catalog_file(catalogs):
-    """ deletes the list of cats """
-    filelist = [ glob.glob(file_get_catalog_abspath(f)) for f in catalogs ]
-    filelist = sum(filelist, [])
-    for f in filelist:
-        try:
-            os.remove(f)
-            logger.info("rm %s" % f)
-        except OSError:
-            logger.error("rm: %s: No such file or directory" % f)
-
-# db functions
-def __db_create_schema(name):
-    """Creates the db schema"""
-    try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        c.execute("DROP TABLE IF EXISTS METADATA;")
-        c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
-        c.execute("DROP TABLE IF EXISTS CATALOG;")
-        c.execute("CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INTEGER NOT NULL, size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);")
-        conn.commit()
-        conn.close()
-    except sqlite3.Error as e:
-        logger.error("An error occurred: %s" % e)
-
-def __db_executemany(name, query, l):
-    """Generic insert invocation in name db"""
-    try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        logger.debug('SQL: Executing %s %s' % (query ,l)) #
-        c.executemany(query, l)
-        conn.commit()
-        conn.close()
-    except sqlite3.Error as e:
-        logger.error("An error occurred: %s" % e)
-
-
-def __db_get_all(name, query, params = ()):
-    """Generic query invocation in name db"""
-    rows = []
-    try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        conn.create_function("REGEX", 2, db_regex)
-        c = conn.cursor()
-        logger.debug('SQL: Executing %s %s' % (query, params))
-        c.execute(query, params)
-        rows = c.fetchall()
-        conn.close()
-    except sqlite3.Error as e:
-        logger.error("An error occurred: %s" % e)
-    return rows
-
-def __db_get_some(name, query, params = []):
-    """Generic query invocation in name db"""
-    # TOFIX this method is too hacky, we have to fix this
-    rows = []
-    try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        conn.create_function("REGEX", 2, db_regex)
-        c = conn.cursor()
-        for param in params:
-            logger.debug('SQL: Executing %s %s' % (query, param))
-            c.execute(query, param)
-            rs = c.fetchall()
-            for r in rs:
-                rows.append(r)
-        conn.close()
-    except sqlite3.Error as e:
-        logger.error("An error occurred: %s" % e)
-    return rows
-
-def db_get_deleted_ids(name):
-    """Return a list of ids of the items that exist in the database but don't exist""" 
-    """anymore in the filesystem"""
-    m = db_get_metadata(name)
-    deleted = []
-    try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        logger.debug('SQL: Executing %s' % sql_select_catalog)
-        for id, name, date, size, path, hash in c.execute(sql_select_catalog):
-            filename = os.path.join(m['fullpath'], path, name)
-            if not os.path.isfile(filename):
-                deleted.append(id)
-        conn.close()
-    except sqlite3.Error as e:
-        logger.error("An error occurred: %s" % e)
-    return deleted
-
 
 def build_metadata(name, path, fullpath, hash_type = 'sha1'):
     date = str(int(time.time()))
@@ -222,28 +30,6 @@ def build_metadata(name, path, fullpath, hash_type = 'sha1'):
     if hash_type:
         metadata.append(('hash', hash_type))
     return metadata
-
-def db_insert_metadata(name, metadata):
-    return __db_executemany(name, sql_insert_metadata, metadata)
-
-def db_insert_catalog(name, files):
-    return __db_executemany(name, sql_insert_catalog, files)
-
-def db_create(name):
-    __db_create_schema(name)
-
-def db_get_metadata(name):
-    l = __db_get_all(name, sql_select_metadata)
-    return list_of_tuples_to_dir(l)
-
-def db_get_catalog(name):
-    return __db_get_all(name, sql_select_catalog)
-
-def db_regex(pattern, string):
-    regex = re.match(pattern, string)
-    if regex:
-        return True
-    return False
 
 # to string functions
 def metadata_str(name):
@@ -263,8 +49,7 @@ def catalog_to_str(catalog):
     s += '\n'.join('%s | %s | %s | %s' % (name, datetime.fromtimestamp(date).isoformat(), size, path) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
 
-def catalogs_str():
-    catalogs = file_get_catalogs()
+def catalogs_str(catalogs):
     s = ''
     for catalog in catalogs:
         date = str(datetime.fromtimestamp(catalog['date']))
@@ -315,7 +100,7 @@ def find_plus_in_catalogs(regex, catalogs = None):
 
     return items
 
-def file_equals(file1, file2):
+def item_equals(file1, file2):
     """ compares two file items, for their name, path, size, date """
     for i in range(1,5):
         if file1[i] != file2[i]:
@@ -327,26 +112,11 @@ def get_non_inserted_files(files, inserted_files):
     for file in files:
         exists_in_db = False
         for inserted_file in inserted_files:
-            if file_equals(file, inserted_file):
+            if item_equals(file, inserted_file):
                 exists_in_db = True
         if not exists_in_db:
             non_inserted_files.append(file)
     return non_inserted_files
-
-def db_delete_catalog(name, l):
-    """ deletes the rows the list of ids l from the catalog"""
-    query =  sql_delete_catalog % ",".join(map(str,l))
-    """Creates the db schema"""
-    try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        logger.debug('SQL: Executing %s' % query)
-        c.execute(query)
-        conn.commit()
-        conn.close()
-    except sqlite3.Error as e:
-        logger.error("An error occurred: %s" % e)
 
 def __build_select_catalog_cond_params(files):
     l = []
@@ -371,12 +141,12 @@ def update_catalog(name, path):
             filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
             for files in filesubsets:
                 l = __build_select_catalog_cond_params(files)
-                inserted_files = __db_get_some(name, sql_select_catalog_cond, l)
+                inserted_files = db_get_inserted_catalogs(name, l)
                 # we find the new or updated files in the path
                 non_inserted_files = get_non_inserted_files(files, inserted_files)
                 if non_inserted_files:
                     logger.info('Updating missing files in the catalog')
-                    hashed_files = calc_hashes(fullpath, non_inserted_files)
+                    hashed_files = calc_hashes(fullpath, non_inserted_files, BLOCK_SIZE)
                     db_insert_catalog(name, hashed_files)
         else:
             logger.warning('impossible to continue invalid name or path  %s:%s' % (name, fullpath))
@@ -396,7 +166,7 @@ def create_catalog(name, path, force = False):
         # and then we add in subsets the catalog (to avoid overusing memory)
         filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
         for files in filesubsets:
-            hashed_files = calc_hashes(fullpath, files)
+            hashed_files = calc_hashes(fullpath, files, BLOCK_SIZE)
             db_insert_catalog(name, hashed_files)
         return True
     else:
@@ -449,7 +219,8 @@ if __name__ == '__main__':
     # logger.debug(args)
 
     if args.verbose:
-        logger.setLevel(logging.DEBUG)
+        logging.setLevel(logging.DEBUG)
+        # logger.setLevel(logging.DEBUG)
 
     if args.silent:
         logger.removeHandler(ch)
@@ -462,7 +233,7 @@ if __name__ == '__main__':
 
     # we evaluate each command
     if args.command == 'init':
-        file_touch_catho_dir()
+        file_touch_dir(catho_path)
 
     elif args.command == 'add':
         if not args.cont:
@@ -472,7 +243,8 @@ if __name__ == '__main__':
 
     elif args.command == 'ls':
         if not args.names:
-            logger.info(catalogs_str())
+            catalogs = file_get_catalogs()
+            logger.info(catalogs_str(catalogs))
         else:
             logger.info(catalogs_info_str(args.names))
 

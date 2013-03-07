@@ -9,10 +9,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from catho import catho
 from catho import utils
+from catho import file
+from catho import db
 
 class TestCatalog(unittest.TestCase):
     def setUp(self):
-        catho.file_touch_catho_dir()
+        file.file_touch_dir(catho.catho_path)
         self.path = '.'
         self.name = 'test'
         self.hash_type = 'sha1'
@@ -57,7 +59,8 @@ class TestCatalog(unittest.TestCase):
         self.assertTrue(str)
 
     def test_catalogs_str(self):
-        str = catho.catalogs_str()
+        catalogs = file.file_get_catalogs()
+        str = catho.catalogs_str(catalogs)
         self.assertTrue(str)
 
     def test_find_in_catalogs_all_catalogs_two_or_more_matches(self):
