@@ -74,29 +74,26 @@ def find_in_catalogs(pattern, catalogs = None):
     if len(catalogs) == 0:
         logger.error('Catalog does not exist')
 
-    query = "SELECT * FROM CATALOG WHERE name LIKE ? or path LIKE ?;"
-
     items = {}
     for catalog in catalogs:
-        matches = __db_get_all(catalog, query, (pattern, pattern))
+        matches = get_catalog_by_pattern(catalog, pattern)
         if matches:
             items[catalog] = matches
 
     return items
 
 
-def find_plus_in_catalogs(regex, catalogs = None):
+def find_regex_in_catalogs(regex, catalogs = None):
     catalogs = file_select_catalogs(catalogs) 
 
     if len(catalogs) == 0:
         logger.error('Catalog does not exist')
 
-    query = "SELECT * FROM CATALOG WHERE REGEX(?, name);"
-
-    items = [] 
+    items = {}
     for catalog in catalogs:
-        matches = __db_get_all(catalog, query, (regex,))
-        items.extend(matches)
+        matches = get_catalog_by_regex(catalog, regex)
+        if matches:
+            items[catalog] = matches
 
     return items
 
