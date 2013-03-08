@@ -5,7 +5,10 @@ from utils import *
 import logging
 import sqlite3
 
-logger = logging.getLogger('catho')
+logger = logging.getLogger('db')
+ch = logging.StreamHandler()
+logger.addHandler(ch)
+logger.setLevel(logging.INFO)
 
 sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
 sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VALUES (?,?,?,?,?,?)'
@@ -44,7 +47,7 @@ def __db_executemany(name, query, l):
         logger.error("An error occurred: %s" % e)
 
 
-def db_get_all(name, query, params = ()):
+def __db_get_all(name, query, params = ()):
     """Generic query invocation in name db"""
     rows = []
     try:
@@ -109,11 +112,11 @@ def db_create(name):
     __db_create_schema(name)
 
 def db_get_metadata(name):
-    l = db_get_all(name, sql_select_metadata)
+    l = __db_get_all(name, sql_select_metadata)
     return list_of_tuples_to_dir(l)
 
 def db_get_catalog(name):
-    return db_get_all(name, sql_select_catalog)
+    return __db_get_all(name, sql_select_catalog)
 
 def db_regex(pattern, string):
     regex = re.match(pattern, string)
