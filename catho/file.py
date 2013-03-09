@@ -55,7 +55,6 @@ def path_block_iterator(fullpath, num_files):
             i += 1
             try:
                 rel_path = os.path.relpath(dirname, fullpath)
-
                 # this is the complete file path for each file
                 path = os.path.join(dirname, filename)
                 size, date = get_file_info(path)
@@ -104,3 +103,12 @@ def file_rm_catalog_file(catalogs):
             logger.info("rm %s" % f)
         except OSError:
             logger.error("rm: %s: No such file or directory" % f)
+
+# todo: make block_size class wide
+def file_getfile_as_item(name, block_size, path = None):
+    # the path argument is the original indexing path, 
+    # this is not calculated of the moment, should it be the fullpath if no ?
+    size, date = get_file_info(name)
+    id = None
+    hash = file_hash(name, block_size)
+    return (id, name, date, size, path, hash)

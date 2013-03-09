@@ -5,10 +5,10 @@ from utils import *
 import logging
 import sqlite3
 
-logger = logging.getLogger('db')
-ch = logging.StreamHandler()
-logger.addHandler(ch)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger('catho')
+# ch = logging.StreamHandler()
+# logger.addHandler(ch)
+# logger.setLevel(logging.INFO)
 
 sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
 sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VALUES (?,?,?,?,?,?)'
@@ -18,6 +18,7 @@ sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
 sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? AND size = ? AND date = ?;'
 sql_select_catalog_by_pattern =  "SELECT * FROM CATALOG WHERE name LIKE ? OR path LIKE ?;"
 sql_select_catalog_by_regex = "SELECT * FROM CATALOG WHERE REGEX(?, path + name);"
+sql_select_catalog_by_hash = "SELECT * FROM CATALOG WHERE hash IN (?);"
 
 # db functions
 def __db_create_schema(name):
@@ -115,7 +116,7 @@ def db_create(name):
 
 def db_get_metadata(name):
     l = __db_get_all(name, sql_select_metadata)
-    return list_of_tuples_to_dir(l)
+    return list_of_tuples_to_dict(l)
 
 def db_get_catalog(name):
     return __db_get_all(name, sql_select_catalog)
@@ -150,3 +151,10 @@ def db_delete_catalog(name, l):
 def db_get_inserted_catalogs(name, l):
     """ arg is a 4-tuple of (name, path, size, date) """
     return __db_get_some(name, sql_select_catalog_cond, l)
+
+def get_catalog_by_hash(name, l):
+    """ arg is a list of items, we asume hash is the last element """
+    # hashes = ', '.join("'%s'" % i[-1] for i in l)
+    # print hashes
+    hashes = tuple([i[-1] for i in l])    
+    return __db_get_all(name, sql_select_catalog_by_hash, hashes)

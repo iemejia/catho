@@ -46,7 +46,7 @@ def catalog_str(name):
 
 def catalog_to_str(catalog):
     s = ''
-    s += '\n'.join('%s | %s | %s | %s' % (name, datetime.fromtimestamp(date).isoformat(), size, path) for (id, name, date, size, path, hash) in catalog)
+    s += '\n'.join('%s | %s | %s | %s | %s' % (name, datetime.fromtimestamp(date).isoformat(), size, path, hash) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
 
 def catalogs_str(catalogs):
@@ -96,6 +96,21 @@ def find_regex_in_catalogs(regex, catalogs = None):
             items[catalog] = matches
 
     return items
+
+def find_hash_in_catalogs(files, catalogs = None):
+    catalogs = file_select_catalogs(catalogs) 
+
+    if len(catalogs) == 0:
+        logger.error('Catalog does not exist')
+
+    items = {}
+    for catalog in catalogs:
+        matches = get_catalog_by_hash(catalog, files)
+        if matches:
+            items[catalog] = matches
+
+    return items
+
 
 def item_equals(file1, file2):
     """ compares two file items, for their name, path, size, date """
@@ -170,6 +185,29 @@ def create_catalog(name, path, force = False):
         logger.warning("Catalog: %s already exists" % name)
         return False
 
+def scan_catalogs(name):
+    m = {}
+    if os.path.exists(name):
+        fullpath = os.path.abspath(name)
+        if os.path.isdir(name):
+            logger.info("scanning dir: %s" % name)
+            # and then we add in subsets the catalog (to avoid overusing memory)
+            # filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
+            # for files in filesubsets:
+            #     hashed_files = calc_hashes(fullpath, files, BLOCK_SIZE)
+            #     m = find_hash_in_catalogs(hashed_files)
+
+                # for h in hashed_files:
+                #     m[h[1]] = find_hash_in_catalogs([h])
+                # print m
+                # return m
+        else: # is file
+            logger.info("scanning file: %s" % name)
+            hashed_files = [ file_getfile_as_item(name, BLOCK_SIZE) ]
+            m[name] = find_hash_in_catalogs(hashed_files)
+    else:
+        logger.error("impossible to scan, invalid path: %s" % name)
+    return m
 
 if __name__ == '__main__':
 
@@ -205,7 +243,7 @@ if __name__ == '__main__':
 
     # scan command
     scan_parser = subparsers.add_parser('scan', help='scan if the corresponding arg exists in the catalog')
-    scan_parser.add_argument('name', action='store', help='path name')
+    scan_parser.add_argument('name', action='store', help='file or path name')
 
     # general options
     parser.add_argument('-v', '--verbose', action='store_true')
@@ -216,8 +254,7 @@ if __name__ == '__main__':
     # logger.debug(args)
 
     if args.verbose:
-        logging.setLevel(logging.DEBUG)
-        # logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     if args.silent:
         logger.removeHandler(ch)
@@ -268,5 +305,7 @@ if __name__ == '__main__':
         logger.info("%s items found" % count)
 
     elif args.command == 'scan':
-        logger.error("TODO scan %s" % args.name)
-
+        matches = scan_catalogs(args.name)
+        # logger.info(matches)
+        for name, m in matches.iteritems():
+            logger.info(name + ' found in catalogs: %s' % m.keys())
