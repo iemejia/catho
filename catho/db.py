@@ -17,8 +17,10 @@ sql_select_catalog = "SELECT * FROM CATALOG;"
 sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
 sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? AND size = ? AND date = ?;'
 sql_select_catalog_by_pattern =  "SELECT * FROM CATALOG WHERE name LIKE ? OR path LIKE ?;"
-sql_select_catalog_by_regex = "SELECT * FROM CATALOG WHERE REGEX(?, path + name);"
+sql_select_catalog_by_regex = "SELECT * FROM CATALOG WHERE REGEX(?, path || name);"
 sql_select_catalog_by_hash = "SELECT * FROM CATALOG WHERE hash IN (?);"
+sql_select_catalog_by_absolute_name = "SELECT * FROM CATALOG WHERE path || name = ?;"
+sql_select_catalog_by_path = "SELECT * FROM CATALOG WHERE path LIKE ?;"
 
 # db functions
 def __db_create_schema(name):
@@ -126,6 +128,12 @@ def get_catalog_by_pattern(name, pattern):
 
 def get_catalog_by_regex(name, regex):
     return __db_get_all(name, sql_select_catalog_by_regex, (regex,))
+
+def get_catalog_by_absolute_name(name, fullpath):
+    return __db_get_all(name, sql_select_catalog_by_absolute_name, (fullpath,)) 
+
+def get_catalog_by_path(name, path):
+    return __db_get_all(name, sql_select_catalog_by_path, (path + '%',)) 
 
 def db_regex(pattern, string):
     regex = re.match(pattern, string)
