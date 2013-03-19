@@ -21,9 +21,8 @@ ch = logging.StreamHandler()
 logger.addHandler(ch)
 logger.setLevel(logging.INFO)
 
+
 # file functions
-
-
 def build_metadata(name, path, fullpath, hash_type='sha1'):
 
     date = str(int(time.time()))
@@ -68,9 +67,8 @@ def catalogs_info_str(names):
         s += catalog_str(name)
     return s
 
+
 # Catho operations
-
-
 def find_in_catalogs(pattern, catalogs=None):
     catalogs = file_select_catalogs(catalogs)
     patterns = pattern.split('%')
