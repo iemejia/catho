@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from catho import catho
 from catho import utils
 from catho import file
-from catho import db
+
 
 class TestCatalog(unittest.TestCase):
     def setUp(self):
@@ -101,7 +101,7 @@ class TestCatalog(unittest.TestCase):
         catho.create_catalog(self.name + '_copy', self.path)
         items = catho.find_in_catalogs('not_existing_file.ext', (self.name, self.name + '_copy'))
         items = [f for catalog, files in items.iteritems() for f in files]
-        self.assertTrue(len(items) == 0)      
+        self.assertTrue(len(items) == 0)
 
     def test_update_catalog(self):
         catho.create_catalog(self.name, self.path)

@@ -13,8 +13,10 @@ ch = logging.StreamHandler()
 logger.addHandler(ch)
 logger.setLevel(logging.INFO)
 
+
 def file_get_catalog_abspath(name):
     return os.path.join(catho_path, name + catho_extension)
+
 
 def file_get_catalogs():
     catalogs = []
@@ -24,13 +26,11 @@ def file_get_catalogs():
         if filename.endswith(catho_extension):
             fullpath = os.path.join(catho_path, filename)
             size, date = get_file_info(fullpath)
-            catalogs.append({ 'name' : filename[:-ext_len], 
-                              'size' : size,
-                              'date' : date })
+            catalogs.append({'name': filename[:-ext_len], 'size': size, 'date': date})
     return catalogs
 
-def file_select_catalogs(selection = []):
-    catalogs = file_get_catalogs()
+
+def file_select_catalogs(selection=[]):
     if not selection:
         selected = [catalog['name'] for catalog in file_get_catalogs()]
     else:
@@ -39,8 +39,8 @@ def file_select_catalogs(selection = []):
         if len(selection) != len(selected):
             discarded = [s for s in selection if s not in selected]
             logger.warning('Some catalogs ignored (%s)' % discarded)
-
     return selected
+
 
 def path_block_iterator(fullpath, num_files):
     """ returns an iterator of a subcollection of files for the given size: """
@@ -58,7 +58,7 @@ def path_block_iterator(fullpath, num_files):
                 # this is the complete file path for each file
                 path = os.path.join(dirname, filename)
                 size, date = get_file_info(path)
-                id = None # since the filesystem doesn't identify ids, added to have simmetry with the db registrs
+                id = None  # since the filesystem doesn't identify ids, added to have simmetry with the db registrs
                 hash = None
                 # logger.debug((id, filename, date, size, rel_path, hash))
                 files.append((id, filename, date, size, rel_path, hash))
@@ -72,13 +72,14 @@ def path_block_iterator(fullpath, num_files):
                     realpath = os.path.realpath(path)
                     logger.error("Ignoring %s. No such target file or directory %s" % (path, realpath))
                 else:
-                    logger.error("An error occurred processing %s: %s" % (filename,oe))
+                    logger.error("An error occurred processing %s: %s" % (filename, oe))
             except UnicodeDecodeError as ue:
                 logger.error("An error occurred processing %s: %s" % (filename, ue))
             except IOError as ioe:
                 logger.error("An error occurred processing %s: %s" % (filename, ioe))
 
     yield files
+
 
 def calc_hashes(fullpath, files, block_size, hash_type='sha1'):
     """ calc the hash value for each of the elements of the collection if """
@@ -93,9 +94,10 @@ def calc_hashes(fullpath, files, block_size, hash_type='sha1'):
             hashed_files.append((id, name, date, size, path, hash))
     return hashed_files
 
+
 def file_rm_catalog_file(catalogs):
     """ deletes the list of cats """
-    filelist = [ glob.glob(file_get_catalog_abspath(f)) for f in catalogs ]
+    filelist = [glob.glob(file_get_catalog_abspath(f)) for f in catalogs]
     filelist = sum(filelist, [])
     for f in filelist:
         try:
@@ -104,9 +106,10 @@ def file_rm_catalog_file(catalogs):
         except OSError:
             logger.error("rm: %s: No such file or directory" % f)
 
+
 # todo: make block_size class wide
-def file_getfile_as_item(name, block_size, path = None):
-    # the path argument is the original indexing path, 
+def file_getfile_as_item(name, block_size, path=None):
+    # the path argument is the original indexing path,
     # this is not calculated of the moment, should it be the fullpath if no ?
     size, date = get_file_info(name)
     id = None

@@ -8,14 +8,13 @@ from db import *
 import argparse
 import logging
 import os
-import sys
 import time
-import re
 
 VALID_HASH_TYPES = ['sha1']
 
-MAX_FILES_ITER = 1024 # number of files read and inserted in the database per iteration
-BLOCK_SIZE = 1048576 # for the pieces used for hash calculation 1MB (2**20), bittorrent sub-hashes are usually less or equal to 512k 256k = 262144
+MAX_FILES_ITER = 1024  # number of files read and inserted in the database per iteration
+
+BLOCK_SIZE = 1048576  # for the pieces used for hash calculation 1MB (2**20), bittorrent sub-hashes are usually less or equal to 512k 256k = 262144
 
 logger = logging.getLogger('catho')
 ch = logging.StreamHandler()
@@ -24,12 +23,15 @@ logger.setLevel(logging.INFO)
 
 # file functions
 
-def build_metadata(name, path, fullpath, hash_type = 'sha1'):
+
+def build_metadata(name, path, fullpath, hash_type='sha1'):
+
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path), ('fullpath', fullpath), ('createdate', date), ('lastmodifdate', date)]
     if hash_type:
         metadata.append(('hash', hash_type))
     return metadata
+
 
 # to string functions
 def metadata_str(name):
@@ -38,16 +40,18 @@ def metadata_str(name):
     s += '\n'.join('%s: \t%s' % (key, value) for (key, value) in meta.items())
     return s
 
+
 def catalog_str(name):
     catalog = db_get_catalog(name)
     # print catalog
-    s = "CATALOG\n"
     return catalog_to_str(catalog)
+
 
 def catalog_to_str(catalog):
     s = ''
     s += '\n'.join('%s | %s | %s | %s | %s' % (name, datetime.fromtimestamp(date).isoformat(), size, path, hash) for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
+
 
 def catalogs_str(catalogs):
     s = ''
@@ -55,6 +59,7 @@ def catalogs_str(catalogs):
         date = str(datetime.fromtimestamp(catalog['date']))
         s += '\n{: >0} {: >15} {: >15}'.format(*(catalog['name'], catalog['size'], date))
     return s
+
 
 def catalogs_info_str(names):
     s = ''
@@ -65,7 +70,8 @@ def catalogs_info_str(names):
 
 # Catho operations
 
-def find_in_catalogs(pattern, catalogs = None):
+
+def find_in_catalogs(pattern, catalogs=None):
     catalogs = file_select_catalogs(catalogs)
     patterns = pattern.split('%')
     patterns = map(lambda s: s.replace('*', '%'), patterns)
@@ -83,8 +89,8 @@ def find_in_catalogs(pattern, catalogs = None):
     return items
 
 
-def find_regex_in_catalogs(regex, catalogs = None):
-    catalogs = file_select_catalogs(catalogs) 
+def find_regex_in_catalogs(regex, catalogs=None):
+    catalogs = file_select_catalogs(catalogs)
 
     if len(catalogs) == 0:
         logger.error('Catalog does not exist')
@@ -97,8 +103,9 @@ def find_regex_in_catalogs(regex, catalogs = None):
 
     return items
 
-def find_hash_in_catalogs(files, catalogs = None):
-    catalogs = file_select_catalogs(catalogs) 
+
+def find_hash_in_catalogs(files, catalogs=None):
+    catalogs = file_select_catalogs(catalogs)
 
     if len(catalogs) == 0:
         logger.error('Catalog does not exist')
@@ -114,11 +121,12 @@ def find_hash_in_catalogs(files, catalogs = None):
 
 def item_equals(file1, file2):
     """ compares two file items, for their name, path, size, date """
-    for i in range(1,5):
+    for i in range(1, 5):
         if file1[i] != file2[i]:
             return False
     return True
-    
+
+
 def get_non_inserted_files(files, inserted_files):
     non_inserted_files = []
     for file in files:
@@ -130,11 +138,13 @@ def get_non_inserted_files(files, inserted_files):
             non_inserted_files.append(file)
     return non_inserted_files
 
+
 def __build_select_catalog_cond_params(files):
     l = []
     for id, name, date, size, path, hash in files:
         l.append((name, path, size, date))
     return l
+
 
 def update_catalog(name, path):
     if os.path.exists(file_get_catalog_abspath(name)):
@@ -165,13 +175,14 @@ def update_catalog(name, path):
     else:
         logger.warning('catalog %s not found.' % name)
 
-def create_catalog(name, path, force = False):
+
+def create_catalog(name, path, force=False):
     if force or not os.path.exists(file_get_catalog_abspath(name)):
         logger.info("Creating catalog: %s" % name)
 
         # we create the header of the datafile
         fullpath = os.path.abspath(path)
-        metadata = build_metadata(name, path, fullpath, hash_type = 'sha1')
+        metadata = build_metadata(name, path, fullpath, hash_type='sha1')
         db_create(name)
         db_insert_metadata(name, metadata)
 
@@ -185,10 +196,11 @@ def create_catalog(name, path, force = False):
         logger.warning("Catalog: %s already exists" % name)
         return False
 
+
 def scan_catalogs(name):
     m = {}
     if os.path.exists(name):
-        fullpath = os.path.abspath(name)
+        # fullpath = os.path.abspath(name)
         if os.path.isdir(name):
             logger.info("scanning dir: %s" % name)
             # and then we add in subsets the catalog (to avoid overusing memory)
@@ -201,9 +213,9 @@ def scan_catalogs(name):
                 #     m[h[1]] = find_hash_in_catalogs([h])
                 # print m
                 # return m
-        else: # is file
+        else:  # is file
             logger.info("scanning file: %s" % name)
-            hashed_files = [ file_getfile_as_item(name, BLOCK_SIZE) ]
+            hashed_files = [file_getfile_as_item(name, BLOCK_SIZE)]
             m[name] = find_hash_in_catalogs(hashed_files)
     else:
         logger.error("impossible to scan, invalid path: %s" % name)
@@ -212,7 +224,7 @@ def scan_catalogs(name):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Catho', prog='catho', epilog='"catho <command> -h" for more information on a specific command.')
-    subparsers = parser.add_subparsers(help='commands', dest='command' )
+    subparsers = parser.add_subparsers(help='commands', dest='command')
 
     # init command
     init_parser = subparsers.add_parser('init', help='inits catalog repository')
@@ -262,7 +274,7 @@ if __name__ == '__main__':
 
     if args.create_log:
         logger.info('logging to file %s' % args.create_log)
-        fh = logging.FileHandler(args.create_log) # to check RotatingFileHandler
+        fh = logging.FileHandler(args.create_log)  # to check RotatingFileHandler
         logger.addHandler(fh)
 
     # we evaluate each command
@@ -289,10 +301,10 @@ if __name__ == '__main__':
         if args.catalogs[0]:
             catalogs = args.catalogs[0]
         else:
-            catalogs =  [catalog['name'] for catalog in file_get_catalogs()]
+            catalogs = [catalog['name'] for catalog in file_get_catalogs()]
 
         str_catalogs = ', '.join(catalogs)
-        logger.info("Finding %s in (%s)" % (args.pattern, str_catalogs)) 
+        logger.info("Finding %s in (%s)" % (args.pattern, str_catalogs))
 
         matches = find_in_catalogs(args.pattern, catalogs)
 
