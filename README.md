@@ -59,6 +59,7 @@ web, etc).
 
 Collaboration
 ----------
-Contributions are welcome, but please add new unit tests to test your changes
-and/or features.  Also, please try to make changes platform independent and
-backward compatible.
+
+Contributions are welcome, but please add new unit tests to test your
+changes and/or features.  Also, please try to make changes platform
+independent and backward compatible.
