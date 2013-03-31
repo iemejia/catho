@@ -12,15 +12,20 @@ logger = logging.getLogger('catho')
 # logger.setLevel(logging.INFO)
 
 sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
-sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) VALUES (?,?,?,?,?,?)'
+sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) ' \
+                     'VALUES (?,?,?,?,?,?)'
 sql_select_metadata = "SELECT * FROM METADATA;"
 sql_select_catalog = "SELECT * FROM CATALOG;"
 sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
-sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? AND size = ? AND date = ?;'
-sql_select_catalog_by_pattern = "SELECT * FROM CATALOG WHERE name LIKE ? OR path LIKE ?;"
-sql_select_catalog_by_regex = "SELECT * FROM CATALOG WHERE REGEX(?, path || name);"
+sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? ' \
+                          'AND size = ? AND date = ?;'
+sql_select_catalog_by_pattern = "SELECT * FROM CATALOG " \
+                                "WHERE name LIKE ? OR path LIKE ?;"
+sql_select_catalog_by_regex = "SELECT * FROM CATALOG " \
+                              "WHERE REGEX(?, path || name);"
 sql_select_catalog_by_hash = "SELECT * FROM CATALOG WHERE hash IN (?);"
-sql_select_catalog_by_absolute_name = "SELECT * FROM CATALOG WHERE path || name = ?;"
+sql_select_catalog_by_absolute_name = "SELECT * FROM CATALOG " \
+                                      "WHERE path || name = ?;"
 sql_select_catalog_by_path = "SELECT * FROM CATALOG WHERE path LIKE ?;"
 
 
@@ -34,7 +39,9 @@ def __db_create_schema(name):
         c.execute("DROP TABLE IF EXISTS METADATA;")
         c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
         c.execute("DROP TABLE IF EXISTS CATALOG;")
-        c.execute("CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date INTEGER NOT NULL, size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);")
+        c.execute('CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT,'
+                  'name TEXT NOT NULL, date INTEGER NOT NULL, '
+                  'size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);')
         conn.commit()
         conn.close()
     except sqlite3.Error as e:
@@ -94,8 +101,8 @@ def __db_get_some(name, query, params=[]):
 
 
 def db_get_deleted_ids(name):
-    """Return a list of ids of the items that exist in the database but don't exist"""
-    """anymore in the filesystem"""
+    """Return a list of ids of the items that exist in the database but """
+    """don't exist anymore in the filesystem"""
     m = db_get_metadata(name)
     deleted = []
     try:

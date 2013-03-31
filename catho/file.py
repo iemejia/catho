@@ -26,7 +26,8 @@ def file_get_catalogs():
         if filename.endswith(catho_extension):
             fullpath = os.path.join(catho_path, filename)
             size, date = get_file_info(fullpath)
-            catalogs.append({'name': filename[:-ext_len], 'size': size, 'date': date})
+            catalogs.append({'name': filename[:-ext_len], 'size': size,
+                            'date': date})
     return catalogs
 
 
@@ -34,7 +35,8 @@ def file_select_catalogs(selection=[]):
     if not selection:
         selected = [catalog['name'] for catalog in file_get_catalogs()]
     else:
-        selected = [catalog['name'] for catalog in file_get_catalogs() if catalog['name'] in selection]
+        selected = [catalog['name'] for catalog in file_get_catalogs()
+                    if catalog['name'] in selection]
 
         if len(selection) != len(selected):
             discarded = [s for s in selection if s not in selected]
@@ -58,7 +60,9 @@ def path_block_iterator(fullpath, num_files):
                 # this is the complete file path for each file
                 path = os.path.join(dirname, filename)
                 size, date = get_file_info(path)
-                id = None  # since the filesystem doesn't identify ids, added to have simmetry with the db registrs
+                # since the filesystem doesn't identify ids, added to have
+                # simmetry with the db registrs
+                id = None
                 hash = None
                 # logger.debug((id, filename, date, size, rel_path, hash))
                 files.append((id, filename, date, size, rel_path, hash))
@@ -70,13 +74,17 @@ def path_block_iterator(fullpath, num_files):
             except OSError as oe:
                 if oe.errno == errno.ENOENT:
                     realpath = os.path.realpath(path)
-                    logger.error("Ignoring %s. No such target file or directory %s" % (path, realpath))
+                    logger.error("Ignoring %s. No such target file or "
+                                 "directory %s" % (path, realpath))
                 else:
-                    logger.error("An error occurred processing %s: %s" % (filename, oe))
+                    logger.error("An error occurred processing %s: %s" %
+                                (filename, oe))
             except UnicodeDecodeError as ue:
-                logger.error("An error occurred processing %s: %s" % (filename, ue))
+                logger.error("An error occurred processing %s: %s" %
+                            (filename, ue))
             except IOError as ioe:
-                logger.error("An error occurred processing %s: %s" % (filename, ioe))
+                logger.error("An error occurred processing %s: %s" %
+                            (filename, ioe))
 
     yield files
 

@@ -88,14 +88,16 @@ class TestCatalog(unittest.TestCase):
     def test_find_in_catalogs_selected_catalogs_not_matches(self):
         catho.create_catalog(self.name, self.path)
         catho.create_catalog(self.name + '_copy', self.path)
-        items = catho.find_in_catalogs('not_existing_file.ext', (self.name, self.name + '_copy'))
+        items = catho.find_in_catalogs('not_existing_file.ext',
+                                       (self.name, self.name + '_copy'))
         items = [f for catalog, files in items.items() for f in files]
         self.assertTrue(len(items) == 0)
 
     def test_find_in_catalog_selected_catalog_not_matches(self):
         catho.create_catalog(self.name, self.path)
         catho.create_catalog(self.name + '_copy', self.path)
-        items = catho.find_in_catalogs('not_existing_file.ext', (self.name, self.name + '_copy'))
+        items = catho.find_in_catalogs('not_existing_file.ext',
+                                       (self.name, self.name + '_copy'))
         items = [f for catalog, files in items.items() for f in files]
         self.assertTrue(len(items) == 0)
 

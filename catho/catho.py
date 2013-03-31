@@ -12,9 +12,12 @@ import time
 
 VALID_HASH_TYPES = ['sha1']
 
-MAX_FILES_ITER = 1024  # number of files read and inserted in the database per iteration
+# number of files read and inserted in the database per iteration
+MAX_FILES_ITER = 1024
 
-BLOCK_SIZE = 1048576  # for the pieces used for hash calculation 1MB (2**20), bittorrent sub-hashes are usually less or equal to 512k 256k = 262144
+# for the pieces used for hash calculation 1MB (2**20),
+# bittorrent sub-hashes are usually less or equal to 512k 256k = 262144
+BLOCK_SIZE = 1048576
 
 logger = logging.getLogger('catho')
 ch = logging.StreamHandler()
@@ -26,7 +29,9 @@ logger.setLevel(logging.INFO)
 def build_metadata(name, path, fullpath, hash_type='sha1'):
 
     date = str(int(time.time()))
-    metadata = [('version', '1'), ('name', name), ('path', path), ('fullpath', fullpath), ('createdate', date), ('lastmodifdate', date)]
+    metadata = [('version', '1'), ('name', name), ('path', path),
+                ('fullpath', fullpath), ('createdate', date),
+                ('lastmodifdate', date)]
     if hash_type:
         metadata.append(('hash', hash_type))
     return metadata
@@ -48,7 +53,9 @@ def catalog_str(name):
 
 def catalog_to_str(catalog):
     s = ''
-    s += '\n'.join('%s | %s | %s | %s | %s' % (name, datetime.fromtimestamp(date).isoformat(), size, path, hash) for (id, name, date, size, path, hash) in catalog)
+    s += '\n'.join('%s | %s | %s | %s | %s' %
+         (name, datetime.fromtimestamp(date).isoformat(), size, path, hash)
+         for (id, name, date, size, path, hash) in catalog)
     return s + '\n'
 
 
@@ -56,7 +63,8 @@ def catalogs_str(catalogs):
     s = ''
     for catalog in catalogs:
         date = str(datetime.fromtimestamp(catalog['date']))
-        s += '\n{: >0} {: >15} {: >15}'.format(*(catalog['name'], catalog['size'], date))
+        s += '\n{: >0} {: >15} {: >15}'.format(*(catalog['name'],
+             catalog['size'], date))
     return s
 
 
@@ -163,13 +171,16 @@ def update_catalog(name, path):
                 l = __build_select_catalog_cond_params(files)
                 inserted_files = db_get_inserted_catalogs(name, l)
                 # we find the new or updated files in the path
-                non_inserted_files = get_non_inserted_files(files, inserted_files)
+                non_inserted_files = get_non_inserted_files(files,
+                                                            inserted_files)
                 if non_inserted_files:
                     logger.info('Updating missing files in the catalog')
-                    hashed_files = calc_hashes(fullpath, non_inserted_files, BLOCK_SIZE)
+                    hashed_files = calc_hashes(fullpath, non_inserted_files,
+                                               BLOCK_SIZE)
                     db_insert_catalog(name, hashed_files)
         else:
-            logger.warning('impossible to continue invalid name or path  %s:%s' % (name, fullpath))
+            logger.warning('impossible to continue invalid name or path '
+                           ' %s:%s' % (name, fullpath))
     else:
         logger.warning('catalog %s not found.' % name)
 
@@ -221,7 +232,9 @@ def scan_catalogs(name):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Catho', prog='catho', epilog='"catho <command> -h" for more information on a specific command.')
+    parser = argparse.ArgumentParser(description='Catho', prog='catho',
+                                     epilog='"catho <command> -h" for more'
+                                            'information on a specific command.')
     subparsers = parser.add_subparsers(help='commands', dest='command')
 
     # init command
@@ -233,32 +246,41 @@ if __name__ == '__main__':
 
     # ls command
     list_parser = subparsers.add_parser('ls', help='list available catalogs')
-    list_parser.add_argument('names', action='store', nargs='*', help='catalog name')
+    list_parser.add_argument('names', action='store', nargs='*',
+                             help='catalog name')
 
     # add command
     add_parser = subparsers.add_parser('add', help='adds catalog')
     add_parser.add_argument('name', action='store', help='catalog name')
     add_parser.add_argument('path', action='store', help='path to index')
     add_parser.add_argument('-f', '--force', help='force', action='store_true')
-    add_parser.add_argument('-c', '--continue', help='continue', action='store_true', dest='cont')
+    add_parser.add_argument('-c', '--continue', help='continue',
+                            action='store_true', dest='cont')
 
     # rm command
     rm_parser = subparsers.add_parser('rm', help='removes catalog')
-    rm_parser.add_argument('names', action='store', nargs='*', help='catalog name')
+    rm_parser.add_argument('names', action='store', nargs='*',
+                           help='catalog name')
 
     # find command
-    find_parser = subparsers.add_parser('find', help='find a filename in catalog')
-    find_parser.add_argument('pattern', action='store', help='a pattern to match')
-    find_parser.add_argument('catalogs', action='append', nargs='*', help='catalog name')
+    find_parser = subparsers.add_parser('find',
+                                        help='find a filename in catalog')
+    find_parser.add_argument('pattern', action='store',
+                             help='a pattern to match')
+    find_parser.add_argument('catalogs', action='append', nargs='*',
+                             help='catalog name')
 
     # scan command
-    scan_parser = subparsers.add_parser('scan', help='scan if the corresponding arg exists in the catalog')
+    scan_parser = subparsers.add_parser('scan',
+                                        help='scan if the corresponding arg'
+                                             'exists in the catalog')
     scan_parser.add_argument('name', action='store', help='file or path name')
 
     # general options
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-s', '--silent', action='store_true')
-    parser.add_argument('-l', '--create-log', help='creates log file', action='store')
+    parser.add_argument('-l', '--create-log', help='creates log file',
+                        action='store')
 
     args = parser.parse_args()
     # logger.debug(args)
@@ -272,7 +294,8 @@ if __name__ == '__main__':
 
     if args.create_log:
         logger.info('logging to file %s' % args.create_log)
-        fh = logging.FileHandler(args.create_log)  # to check RotatingFileHandler
+        # to check RotatingFileHandler
+        fh = logging.FileHandler(args.create_log)
         logger.addHandler(fh)
 
     # we evaluate each command
