@@ -3,9 +3,9 @@
 from __future__ import absolute_import
 
 import os
-import sys
 import unittest
 import utils
+
 
 class TestUtils(unittest.TestCase):
 
@@ -29,10 +29,10 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(s3, '1.2 KB')
 
     def test_file_hash(self):
-        filename = 'LICENSE'
+        filename = '__init__.py'
         block_size = 1048576
         h1 = utils.file_hash(filename, block_size, hash_type='sha1')
-        self.assertEqual(h1, '2a4bdae6ceb4166ca3f66f937b12208f7b3064f6')
+        self.assertEqual(h1, 'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestUtils)

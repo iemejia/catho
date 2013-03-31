@@ -3,12 +3,12 @@
 
 import catho
 import file
-import os
-import sys
 import unittest
 import utils
 
+
 class TestCatalog(unittest.TestCase):
+
     def setUp(self):
         file.file_touch_dir(catho.catho_path)
         self.path = '.'
