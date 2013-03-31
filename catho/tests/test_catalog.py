@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import catho
+import file
 import os
 import sys
 import unittest
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from catho import catho
-from catho import utils
-from catho import file
-
+import utils
 
 class TestCatalog(unittest.TestCase):
     def setUp(self):

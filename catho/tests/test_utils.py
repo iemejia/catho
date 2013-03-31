@@ -5,10 +5,7 @@ from __future__ import absolute_import
 import os
 import sys
 import unittest
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from catho import utils
-
+import utils
 
 class TestUtils(unittest.TestCase):
 
