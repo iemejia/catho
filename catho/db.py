@@ -12,13 +12,14 @@ logger = logging.getLogger('catho')
 # logger.setLevel(logging.INFO)
 
 sql_insert_metadata = 'INSERT INTO METADATA (key, value) VALUES (?,?)'
-sql_insert_catalog = 'INSERT INTO CATALOG (id, name, date, size, path, hash) ' \
+sql_insert_catalog = 'INSERT INTO CATALOG ' \
+                     '(id, name, date, size, path, hash) ' \
                      'VALUES (?,?,?,?,?,?)'
 sql_select_metadata = "SELECT * FROM METADATA;"
 sql_select_catalog = "SELECT * FROM CATALOG;"
 sql_delete_catalog = "DELETE FROM catalog where id IN (%s);"
-sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND PATH = ? ' \
-                          'AND size = ? AND date = ?;'
+sql_select_catalog_cond = 'SELECT * FROM catalog WHERE NAME = ? AND ' \
+                          'PATH = ? AND size = ? AND date = ?;'
 sql_select_catalog_by_pattern = "SELECT * FROM CATALOG " \
                                 "WHERE name LIKE ? OR path LIKE ?;"
 sql_select_catalog_by_regex = "SELECT * FROM CATALOG " \
@@ -142,7 +143,8 @@ def db_get_catalog(name):
 
 
 def get_catalog_by_pattern(name, pattern):
-    return __db_get_all(name, sql_select_catalog_by_pattern, (pattern, pattern))
+    return __db_get_all(name, sql_select_catalog_by_pattern,
+                        (pattern, pattern))
 
 
 def get_catalog_by_regex(name, regex):

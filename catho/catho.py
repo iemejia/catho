@@ -212,7 +212,7 @@ def scan_catalogs(name):
         # fullpath = os.path.abspath(name)
         if os.path.isdir(name):
             logger.info("scanning dir: %s" % name)
-            # and then we add in subsets the catalog (to avoid overusing memory)
+            # and then we add in subsets the catalog (to avoid using memory)
             # filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
             # for files in filesubsets:
             #     hashed_files = calc_hashes(fullpath, files, BLOCK_SIZE)
@@ -233,13 +233,14 @@ def scan_catalogs(name):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Catho', prog='catho',
-                                     epilog='"catho <command> -h" for more'
-                                            'information on a specific command.')
+                                     epilog='"catho <command> -h" for more '
+                                            'information on a specific '
+                                            'command.')
     subparsers = parser.add_subparsers(help='commands', dest='command')
 
     # init command
-    init_parser = subparsers.add_parser('init', help='inits catalog repository')
-
+    init_parser = subparsers.add_parser('init', help='inits catalog '
+                                                     'repository')
     # help command
     help_parser = subparsers.add_parser('help', help='help for command')
     help_parser.add_argument('cmd', action='store', help='command')

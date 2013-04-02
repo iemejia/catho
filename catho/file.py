@@ -98,7 +98,8 @@ def calc_hashes(fullpath, files, block_size, hash_type='sha1'):
         if not hash:
             file_path = os.path.join(fullpath, path, name)
             hash = file_hash(file_path, block_size, hash_type)
-            logger.debug("Calculating %s for %s | %s" % (hash_type, name, hash))
+            logger.debug("Calculating %s for %s | %s" %
+                        (hash_type, name, hash))
             hashed_files.append((id, name, date, size, path, hash))
     return hashed_files
 

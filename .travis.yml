@@ -4,7 +4,12 @@ python:
   - "3.3"
 # command to install dependencies
 install: "pip install -r requirements.txt --use-mirrors"
+
+# command to validate pep8
+before_script:
+  - pep8 catho
+
 # command to run tests
-script: 
+script:
   - cd catho
   - python -m unittest discover
