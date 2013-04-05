@@ -57,6 +57,11 @@ We would like to create a sort of simple minimalist catalog system so
 people can create nicer tools based on the catho system (e.g. GUI,
 web, etc).
 
+Continuous integration is running automatically via
+[travis-ci](https://travis-ci.org/iemejia/catho) . The current project
+status is:
+[![Build Status](https://travis-ci.org/jplehmann/coursera.png?branch=master)](githttps://travis-ci.org/jplehmann/coursera)
+
 Collaboration
 ----------
 
