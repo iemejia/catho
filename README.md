@@ -1,8 +1,10 @@
-*Catho* is a catalog utility inspired by the awesome Robert Vasicek's
-[http://www.mtg.sk/rva/](Cathy) project. The idea is to have an util
-to save the catalog of the different files that you have in different
-media, volumes, network places, etc, that you can search, and update
-locally without having to put or connect to such media.
+# Catho
+
+**Catho** is a catalog utility inspired by the awesome Robert
+Vasicek's [Cathy](http://www.mtg.sk/rva/) project. The idea is to have
+an util to save the catalog of the different files that you have in
+different media, volumes, network places, etc, that you can search,
+and update locally without having to put or connect to such media.
 
 Or put in other words, it's my excuse to hack some python. Yes, yes I
 promised to do it in haskell, but i don't have time now :P.
@@ -57,7 +59,7 @@ web, etc).
 Continuous integration is running automatically via
 [travis-ci](https://travis-ci.org/iemejia/catho) . The current project
 status is:
-[![Build Status](https://travis-ci.org/jplehmann/coursera.png?branch=master)](githttps://travis-ci.org/jplehmann/coursera)
+[![Build Status](https://travis-ci.org/iemejia/catho.png?branch=master)](https://travis-ci.org/iemejia/catho)
 
 Collaboration
 ----------
