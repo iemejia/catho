@@ -1,7 +1,4 @@
-README
-==========
-
-Catho is a catalog utility inspired by the awesome Robert Vasicek's
+*Catho* is a catalog utility inspired by the awesome Robert Vasicek's
 [http://www.mtg.sk/rva/](Cathy) project. The idea is to have an util
 to save the catalog of the different files that you have in different
 media, volumes, network places, etc, that you can search, and update
@@ -50,7 +47,7 @@ Developing
 ----------
 
 The catalog correspond to a simple sqlite3 database, for more info
-about the catalog structure, see the [docs/catalog.sql](https://github.com/iemejia/catho/blob/master/docs/catalog.sql) file. Catalogs
+about the catalog structure, see the [docs/catalog.sql](https://github.com/iemejia/catho/blob/master/catho/docs/catalog.sql) file. Catalogs
 are saved automatically in the ~/.catho folder.
 
 We would like to create a sort of simple minimalist catalog system so
