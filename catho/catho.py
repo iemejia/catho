@@ -331,7 +331,7 @@ if __name__ == '__main__':
         matches = find_in_catalogs(args.pattern, catalogs)
 
         count = 0
-        for catalog, items in matches.iteritems():
+        for catalog, items in matches.items():
             count += len(items)
             logger.info(catalog + ':')
             logger.info(catalog_to_str(items))
@@ -341,5 +341,5 @@ if __name__ == '__main__':
     elif args.command == 'scan':
         matches = scan_catalogs(args.name)
         # logger.info(matches)
-        for name, m in matches.iteritems():
+        for name, m in matches.items():
             logger.info(name + ' found in catalogs: %s' % m.keys())
