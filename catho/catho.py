@@ -238,9 +238,6 @@ if __name__ == '__main__':
                                             'command.')
     subparsers = parser.add_subparsers(help='commands', dest='command')
 
-    # init command
-    init_parser = subparsers.add_parser('init', help='inits catalog '
-                                                     'repository')
     # help command
     help_parser = subparsers.add_parser('help', help='help for command')
     help_parser.add_argument('cmd', action='store', help='command')
@@ -286,6 +283,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # logger.debug(args)
 
+    # we create the default path for the catalogs (~/.catho)
+    file_touch_dir(catho_path)
+
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
@@ -300,10 +300,7 @@ if __name__ == '__main__':
         logger.addHandler(fh)
 
     # we evaluate each command
-    if args.command == 'init':
-        file_touch_dir(catho_path)
-
-    elif args.command == 'add':
+    if args.command == 'add':
         if not args.cont:
             create_catalog(args.name, args.path, args.force)
         else:
