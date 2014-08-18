@@ -10,7 +10,7 @@ import logging
 import os
 import time
 
-VALID_HASH_TYPES = ['sha1']
+VALID_HASH_TYPES = ['sha1', 'None']
 
 # number of files read and inserted in the database per iteration
 MAX_FILES_ITER = 1024
@@ -26,14 +26,13 @@ logger.setLevel(logging.INFO)
 
 
 # file functions
-def build_metadata(name, path, fullpath, hash_type='sha1'):
-
+def build_metadata(name, path, fullpath, hash_type):
     date = str(int(time.time()))
     metadata = [('version', '1'), ('name', name), ('path', path),
                 ('fullpath', fullpath), ('createdate', date),
-                ('lastmodifdate', date)]
-    if hash_type:
-        metadata.append(('hash', hash_type))
+                ('lastmodifdate', date), ('hash', hash_type)]
+    # not that the metadata could be called hash_type for consistency, but
+    # we keep it like this for compatibility reasons with existing catalogs
     return metadata
 
 
@@ -176,7 +175,7 @@ def update_catalog(name, path):
                 if non_inserted_files:
                     logger.info('Updating missing files in the catalog')
                     hashed_files = calc_hashes(fullpath, non_inserted_files,
-                                               BLOCK_SIZE)
+                                               BLOCK_SIZE, m['hash'])
                     db_insert_catalog(name, hashed_files)
         else:
             logger.warning('impossible to continue invalid name or path '
@@ -185,20 +184,20 @@ def update_catalog(name, path):
         logger.warning('catalog %s not found.' % name)
 
 
-def create_catalog(name, path, force=False):
+def create_catalog(name, path, hash_type, force=False):
     if force or not os.path.exists(file_get_catalog_abspath(name)):
         logger.info("Creating catalog: %s" % name)
 
         # we create the header of the datafile
         fullpath = os.path.abspath(path)
-        metadata = build_metadata(name, path, fullpath, hash_type='sha1')
+        metadata = build_metadata(name, path, fullpath, hash_type)
         db_create(name)
         db_insert_metadata(name, metadata)
 
         # and then we add in subsets the catalog (to avoid overusing memory)
         filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
         for files in filesubsets:
-            hashed_files = calc_hashes(fullpath, files, BLOCK_SIZE)
+            hashed_files = calc_hashes(fullpath, files, BLOCK_SIZE, hash_type)
             db_insert_catalog(name, hashed_files)
         return True
     else:
@@ -224,7 +223,7 @@ def scan_catalogs(name):
                 # return m
         else:  # is file
             logger.info("scanning file: %s" % name)
-            hashed_files = [file_getfile_as_item(name, BLOCK_SIZE)]
+            hashed_files = [file_getfile_as_item(name, BLOCK_SIZE, 'sha1')]
             m[name] = find_hash_in_catalogs(hashed_files)
     else:
         logger.error("impossible to scan, invalid path: %s" % name)
@@ -252,6 +251,8 @@ if __name__ == '__main__':
     add_parser.add_argument('name', action='store', help='catalog name')
     add_parser.add_argument('path', action='store', help='path to index')
     add_parser.add_argument('-f', '--force', help='force', action='store_true')
+    add_parser.add_argument('-H', '--hash-type', help='hash function (e.g. sha1 (default), None',
+                            action='store', default='sha1')
     add_parser.add_argument('-c', '--continue', help='continue',
                             action='store_true', dest='cont')
 
@@ -301,8 +302,13 @@ if __name__ == '__main__':
 
     # we evaluate each command
     if args.command == 'add':
+        logger.info('hash_type: %s' % args.hash_type)
+        if args.hash_type not in VALID_HASH_TYPES:
+            logger.error('error: invalid hash function: %s' % args.hash_type)
+            exit(3)
+
         if not args.cont:
-            create_catalog(args.name, args.path, args.force)
+            create_catalog(args.name, args.path, args.hash_type, args.force)
         else:
             update_catalog(args.name, args.path)
 

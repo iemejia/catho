@@ -89,7 +89,7 @@ def path_block_iterator(fullpath, num_files):
     yield files
 
 
-def calc_hashes(fullpath, files, block_size, hash_type='sha1'):
+def calc_hashes(fullpath, files, block_size, hash_type):
     """ calc the hash value for each of the elements of the collection if """
     """ it has not been calculated """
     """ returns a list of tuples with the hash calculated """
@@ -123,10 +123,10 @@ def file_rm_catalog_file(catalogs):
 
 
 # todo: make block_size class wide
-def file_getfile_as_item(name, block_size, path=None):
+def file_getfile_as_item(name, block_size, hash_type, path=None):
     # the path argument is the original indexing path,
     # this is not calculated of the moment, should it be the fullpath if no ?
     size, date = get_file_info(name)
     id = None
-    hash = file_hash(name, block_size)
+    hash = file_hash(name, block_size, hash_type)
     return (id, name, date, size, path, hash)

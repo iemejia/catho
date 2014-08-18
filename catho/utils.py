@@ -43,28 +43,31 @@ def sizeof_fmt(num):
         num /= 1024.0
 
 
-def file_hash(filename, block_size, hash_type='sha1'):
+def file_hash(filename, block_size, hash_type):
     """ calculates the hash for the file in filename """
     """ default implementation calcs sha1 """
     """ the hash is calculated in blocs of size block_size, so larger
-    files can be supported """
+        files can be supported """
+    """ returns the representation as a hex string or empty if the
+        hash_type is not valid. """
     # todo should we use the git convention for this ?
     # sha1("blob " + filesize + "\0" + data)
-
-    # if hash_type != 'sha1':
-    #     h = hashlib.new(hash_type) # more generic call
-    h = hashlib.sha1()
-    f = open(filename, 'rb')
-    try:
-        while True:
-            data = f.read(block_size)
-            if not data:
-                break
-            h.update(data)
-    finally:
-        f.close()
-    hash = h.hexdigest()
-    return hash
+    if hash_type == 'sha1':
+        #     h = hashlib.new(hash_type) # more generic call
+        h = hashlib.sha1()
+        f = open(filename, 'rb')
+        try:
+            while True:
+                data = f.read(block_size)
+                if not data:
+                    break
+                h.update(data)
+        finally:
+            f.close()
+        hash = h.hexdigest()
+        return hash
+    else:
+        return ''
 
 
 def list_of_tuples_to_dict(l):
