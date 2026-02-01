@@ -32,8 +32,6 @@ const SQL_SELECT_CATALOG_BY_PATTERN: &str =
 const SQL_SELECT_CATALOG_BY_REGEX: &str =
     "SELECT * FROM CATALOG WHERE REGEX(?, path || '/' || name)";
 const SQL_SELECT_CATALOG_BY_HASH: &str = "SELECT * FROM CATALOG WHERE hash IN ";
-#[allow(dead_code)]
-const SQL_SELECT_CATALOG_BY_PATH: &str = "SELECT * FROM CATALOG WHERE path LIKE ? ESCAPE '\\'";
 
 /// Metadata keys.
 pub const META_VERSION: &str = "version";
@@ -358,32 +356,6 @@ pub fn get_catalog_by_hash(name: &str, hashes: &[String]) -> Result<Vec<FileItem
     let params: Vec<&dyn rusqlite::ToSql> =
         hashes.iter().map(|h| h as &dyn rusqlite::ToSql).collect();
     let rows = stmt.query_map(params.as_slice(), |row| {
-        Ok(FileItem {
-            id: Some(row.get(0)?),
-            name: row.get(1)?,
-            date: row.get(2)?,
-            size: row.get(3)?,
-            path: row.get(4)?,
-            hash: row.get(5)?,
-        })
-    })?;
-
-    let mut items = Vec::new();
-    for row in rows {
-        items.push(row?);
-    }
-
-    Ok(items)
-}
-
-/// Search catalog by path prefix.
-#[allow(dead_code)]
-pub fn get_catalog_by_path(name: &str, path: &str) -> Result<Vec<FileItem>> {
-    let conn = open_connection(name)?;
-
-    let pattern = format!("{}%", path.replace('\\', "\\\\").replace('%', "\\%"));
-    let mut stmt = conn.prepare(SQL_SELECT_CATALOG_BY_PATH)?;
-    let rows = stmt.query_map(params![pattern], |row| {
         Ok(FileItem {
             id: Some(row.get(0)?),
             name: row.get(1)?,

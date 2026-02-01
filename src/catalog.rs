@@ -1,7 +1,6 @@
 //! Catalog operations for catho.
 
 use serde::Serialize;
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -50,7 +49,7 @@ pub struct ExportedFile {
     pub id: i64,
     pub name: String,
     pub path: String,
-    pub size: u64,
+    pub size: i64,
     pub date: i64,
     pub hash: Option<String>,
 }
@@ -266,17 +265,6 @@ pub fn list_catalogs() -> Result<Vec<CatalogInfo>> {
     get_catalogs()
 }
 
-/// Get detailed info about specific catalogs.
-#[allow(dead_code)]
-pub fn catalogs_info(names: &[String]) -> Result<HashMap<String, CatalogMetadata>> {
-    let mut info = HashMap::new();
-    for name in names {
-        let metadata = db_get_metadata(name)?;
-        info.insert(name.clone(), metadata);
-    }
-    Ok(info)
-}
-
 /// Remove catalogs.
 pub fn remove_catalogs(names: &[String]) -> Result<()> {
     remove_catalog_files(names)
@@ -350,12 +338,7 @@ pub fn format_search_results(results: &[SearchResult]) -> String {
         output.push_str(&format!("{:-<60}\n", ""));
 
         for file in &result.files {
-            let hash_str = file.hash.as_deref().unwrap_or("-");
-            let hash_preview = if hash_str.len() > 8 {
-                &hash_str[..8]
-            } else {
-                hash_str
-            };
+            let hash_preview = crate::utils::truncate_hash(file.hash.as_deref(), 8);
 
             output.push_str(&format!(
                 "  {} ({}, {}) [{}...]\n",
@@ -376,7 +359,7 @@ pub fn format_catalog_info(
     name: &str,
     metadata: &CatalogMetadata,
     file_count: usize,
-    total_size: u64,
+    total_size: i64,
 ) -> String {
     let mut output = String::new();
 

@@ -4,7 +4,6 @@ use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::time::SystemTime;
 
 use crate::error::Result;
 
@@ -70,20 +69,8 @@ pub fn file_hash(path: &Path, hash_type: HashType) -> Result<Option<String>> {
     }
 }
 
-/// Get file metadata (size and modification time).
-pub fn get_file_info(path: &Path) -> Result<(u64, i64)> {
-    let metadata = fs::metadata(path)?;
-    let size = metadata.len();
-    let mtime = metadata
-        .modified()?
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    Ok((size, mtime))
-}
-
 /// Format a size in bytes as a human-readable string.
-pub fn sizeof_fmt(num: u64) -> String {
+pub fn sizeof_fmt(num: i64) -> String {
     const UNITS: &[&str] = &["bytes", "KB", "MB", "GB", "TB", "PB"];
     let mut num = num as f64;
 
@@ -97,42 +84,25 @@ pub fn sizeof_fmt(num: u64) -> String {
     format!("{:.1} PB", num)
 }
 
-/// Format a Unix timestamp as a human-readable date string.
+/// Format a Unix timestamp as a human-readable date string (YYYY-MM-DD).
 pub fn format_date(timestamp: i64) -> String {
-    use std::time::{Duration, UNIX_EPOCH};
+    use time::{OffsetDateTime, UtcOffset};
 
-    let datetime = UNIX_EPOCH + Duration::from_secs(timestamp as u64);
+    OffsetDateTime::from_unix_timestamp(timestamp)
+        .map(|dt| dt.to_offset(UtcOffset::UTC))
+        .map(|dt| format!("{:04}-{:02}-{:02}", dt.year(), dt.month() as u8, dt.day()))
+        .unwrap_or_else(|_| "unknown".to_string())
+}
 
-    // Simple formatting without external crate
-    if let Ok(duration) = datetime.duration_since(UNIX_EPOCH) {
-        let secs = duration.as_secs();
-        // Calculate date components
-        let days = secs / 86400;
-        let years = 1970 + days / 365;
-        let remaining_days = days % 365;
-        let months = remaining_days / 30 + 1;
-        let day = remaining_days % 30 + 1;
-
-        return format!("{:04}-{:02}-{:02}", years, months, day);
-    }
-
-    "unknown".to_string()
+/// Truncate a hash string for display purposes.
+/// Returns the first `max_len` characters, or "-" if the hash is None.
+pub fn truncate_hash(hash: Option<&str>, max_len: usize) -> &str {
+    hash.map_or("-", |h| if h.len() > max_len { &h[..max_len] } else { h })
 }
 
 /// Create directory and parents if they don't exist.
 pub fn touch_dir(path: &Path) -> Result<()> {
     fs::create_dir_all(path)?;
-    Ok(())
-}
-
-/// Remove a file or empty directory.
-#[allow(dead_code)]
-pub fn remove_path(path: &Path) -> Result<()> {
-    if path.is_dir() {
-        fs::remove_dir(path)?;
-    } else {
-        fs::remove_file(path)?;
-    }
     Ok(())
 }
 
@@ -162,5 +132,23 @@ mod tests {
     fn test_hash_type_as_str() {
         assert_eq!(HashType::Sha256.as_str(), "sha256");
         assert_eq!(HashType::None.as_str(), "none");
+    }
+
+    #[test]
+    fn test_format_date() {
+        // Unix epoch
+        assert_eq!(format_date(0), "1970-01-01");
+        // Known dates
+        assert_eq!(format_date(1704067200), "2024-01-01"); // Jan 1, 2024
+        assert_eq!(format_date(1735689600), "2025-01-01"); // Jan 1, 2025
+        assert_eq!(format_date(1609459200), "2021-01-01"); // Jan 1, 2021
+    }
+
+    #[test]
+    fn test_truncate_hash() {
+        assert_eq!(truncate_hash(None, 8), "-");
+        assert_eq!(truncate_hash(Some("abcdef"), 8), "abcdef");
+        assert_eq!(truncate_hash(Some("abcdefghij"), 8), "abcdefgh");
+        assert_eq!(truncate_hash(Some(""), 8), "");
     }
 }

@@ -7,7 +7,7 @@ use std::time::SystemTime;
 use walkdir::WalkDir;
 
 use crate::error::{CathoError, Result};
-use crate::utils::{file_hash, get_file_info, HashType};
+use crate::utils::{file_hash, HashType};
 
 /// Catho catalog directory.
 ///
@@ -37,8 +37,8 @@ pub struct FileItem {
     pub name: String,
     /// Modification time as Unix timestamp.
     pub date: i64,
-    /// File size in bytes.
-    pub size: u64,
+    /// File size in bytes (stored as i64 for SQLite compatibility).
+    pub size: i64,
     /// Relative path from catalog root.
     pub path: String,
     /// SHA-256 hash (None if hashing disabled).
@@ -51,7 +51,7 @@ impl FileItem {
         id: Option<i64>,
         name: String,
         date: i64,
-        size: u64,
+        size: i64,
         path: String,
         hash: Option<String>,
     ) -> Self {
@@ -81,7 +81,7 @@ pub struct CatalogInfo {
     /// Catalog name.
     pub name: String,
     /// Database file size in bytes.
-    pub size: u64,
+    pub size: i64,
     /// Database file modification time.
     pub date: i64,
 }
@@ -111,7 +111,7 @@ pub fn get_catalogs() -> Result<Vec<CatalogInfo>> {
                     let name = stem.to_string_lossy().to_string();
                     let metadata = fs::metadata(&path)?;
                     let (size, date) = (
-                        metadata.len(),
+                        metadata.len() as i64,
                         metadata
                             .modified()?
                             .duration_since(std::time::UNIX_EPOCH)
@@ -161,7 +161,7 @@ struct PendingFile {
     path: PathBuf,
     name: String,
     date: i64,
-    size: u64,
+    size: i64,
     rel_path: String,
 }
 
@@ -213,7 +213,7 @@ impl FileIterator {
                         }
                     };
 
-                    let size = metadata.len();
+                    let size = metadata.len() as i64;
                     let date = metadata
                         .modified()
                         .ok()
@@ -288,27 +288,6 @@ pub fn remove_catalog_files(names: &[String]) -> Result<()> {
         }
     }
     Ok(())
-}
-
-/// Get a single file as a FileItem.
-#[allow(dead_code)]
-pub fn get_file_as_item(path: &Path, hash_type: HashType) -> Result<FileItem> {
-    if !path.exists() {
-        return Err(CathoError::PathNotFound(path.to_path_buf()));
-    }
-
-    let (size, date) = get_file_info(path)?;
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let rel_path = path
-        .parent()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| ".".to_string());
-    let hash = file_hash(path, hash_type)?;
-
-    Ok(FileItem::new(None, name, date, size, rel_path, hash))
 }
 
 #[cfg(test)]

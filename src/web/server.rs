@@ -14,7 +14,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::catalog::{export_catalog, find_in_catalogs, list_catalogs};
 use crate::db::{db_get_catalog, db_get_metadata};
-use crate::utils::sizeof_fmt;
+use crate::utils::{sizeof_fmt, truncate_hash};
 
 /// Application state.
 #[derive(Clone)]
@@ -57,7 +57,7 @@ pub struct CatalogListResponse {
 #[derive(Serialize)]
 pub struct CatalogListItem {
     name: String,
-    size: u64,
+    size: i64,
     size_fmt: String,
     date: i64,
 }
@@ -68,7 +68,7 @@ pub struct CatalogDetailResponse {
     metadata: CatalogMetadataResponse,
     files: Vec<FileResponse>,
     total_files: usize,
-    total_size: u64,
+    total_size: i64,
     total_size_fmt: String,
 }
 
@@ -86,7 +86,7 @@ pub struct FileResponse {
     id: i64,
     name: String,
     path: String,
-    size: u64,
+    size: i64,
     size_fmt: String,
     date: i64,
     hash: Option<String>,
@@ -225,7 +225,7 @@ async fn catalog_handler(Path(name): Path<String>, Query(params): Query<CatalogQ
     };
 
     let total_files = filtered_files.len();
-    let total_size: u64 = filtered_files.iter().map(|f| f.size).sum();
+    let total_size: i64 = filtered_files.iter().map(|f| f.size).sum();
 
     let view = if params.view == "tree" {
         "tree"
@@ -316,8 +316,7 @@ fn build_table_html(
     let rows: String = page_files
         .iter()
         .map(|f| {
-            let hash = f.hash.as_deref().unwrap_or("-");
-            let hash_preview = if hash.len() > 16 { &hash[..16] } else { hash };
+            let hash_preview = truncate_hash(f.hash.as_deref(), 16);
             format!(
                 r#"<tr>
                     <td>{}</td>
@@ -479,11 +478,7 @@ impl<'a> TreeNode<'a> {
                 continue;
             }
 
-            let hash_preview = file
-                .hash
-                .as_ref()
-                .map(|h| if h.len() > 8 { &h[..8] } else { h })
-                .unwrap_or("-");
+            let hash_preview = truncate_hash(file.hash.as_deref(), 8);
 
             let match_class = if has_filter && is_match { " match" } else { "" };
             html.push_str(&format!(
@@ -657,7 +652,7 @@ async fn api_catalog(Path(name): Path<String>) -> Response {
 
     match export_catalog(&name) {
         Ok(catalog) => {
-            let total_size: u64 = catalog.files.iter().map(|f| f.size).sum();
+            let total_size: i64 = catalog.files.iter().map(|f| f.size).sum();
             let response = CatalogDetailResponse {
                 metadata: CatalogMetadataResponse {
                     name: catalog.metadata.name,

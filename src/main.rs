@@ -107,7 +107,7 @@ fn run_command(command: Option<Commands>) -> Result<(), CathoError> {
                 for name in &names {
                     let metadata = db_get_metadata(name)?;
                     let files = db_get_catalog(name)?;
-                    let total_size: u64 = files.iter().map(|f| f.size).sum();
+                    let total_size: i64 = files.iter().map(|f| f.size).sum();
                     println!(
                         "{}",
                         format_catalog_info(name, &metadata, files.len(), total_size)

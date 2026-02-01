@@ -23,7 +23,7 @@ exclude = [
 clap = { version = "4.5", features = ["derive"] }
 
 # Database
-rusqlite = { version = "0.33", features = ["bundled", "functions"] }
+rusqlite = { version = "0.38", features = ["bundled", "functions"] }
 
 # Hashing
 sha2 = "0.10"
@@ -40,11 +40,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 walkdir = "2.5"
 dirs = "6.0"
 
+# Date/time formatting
+time = { version = "0.3", features = ["formatting", "macros"] }
+
 # Parallelism
-rayon = "1.10"
+rayon = "1.11"
 
 # Regex
-regex = "1.11"
+regex = "1.12"
 
 # Serialization (for export)
 serde = { version = "1.0", features = ["derive"] }
@@ -52,7 +55,7 @@ serde_json = "1.0"
 
 # Web UI (optional)
 axum = { version = "0.8", optional = true }
-tokio = { version = "1.43", features = ["full"], optional = true }
+tokio = { version = "1.49", features = ["full"], optional = true }
 tower-http = { version = "0.6", features = ["fs", "set-header"], optional = true }
 
 [features]
@@ -60,7 +63,7 @@ default = []
 web = ["axum", "tokio", "tower-http"]
 
 [dev-dependencies]
-tempfile = "3.15"
+tempfile = "3.24"
 assert_cmd = "2.0"
 predicates = "3.1"
 
