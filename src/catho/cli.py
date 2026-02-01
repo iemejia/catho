@@ -115,6 +115,29 @@ def create_parser() -> argparse.ArgumentParser:
     )
     scan_parser.add_argument("name", action="store", help="file or path name")
 
+    # web command
+    web_parser = subparsers.add_parser(
+        "web",
+        help="start the web UI server",
+    )
+    web_parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8080,
+        help="port to listen on (default: 8080)",
+    )
+    web_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="host to bind to (default: 127.0.0.1)",
+    )
+    web_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="enable debug mode",
+    )
+
     # general options
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-s", "--silent", action="store_true")
@@ -202,6 +225,14 @@ def main(argv: list[str] | None = None) -> int:
         scan_matches = scan_catalogs(args.name)
         for name, catalog_matches in scan_matches.items():
             logger.info("%s found in catalogs: %s", name, list(catalog_matches.keys()))
+
+    elif args.command == "web":
+        try:
+            from catho.web import run_server
+        except ImportError:
+            logger.error("Web UI requires Flask. Install with: pip install catho[web]")
+            return 2
+        run_server(host=args.host, port=args.port, debug=args.debug)
 
     elif args.command == "help":
         # Show help for specific command by re-invoking with -h

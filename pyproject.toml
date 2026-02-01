@@ -40,12 +40,16 @@ requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
+web = [
+    "flask>=3.0",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "ruff>=0.4.0",
     "mypy>=1.10",
     "pre-commit>=3.0",
+    "flask>=3.0",
 ]
 test = [
     "pytest>=8.0",
