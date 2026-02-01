@@ -272,6 +272,81 @@ BASE_TEMPLATE = """
         .empty-state h2 {
             margin-bottom: 1rem;
         }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .view-toggle a {
+            padding: 0.5rem 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .view-toggle a:hover {
+            border-color: var(--highlight);
+        }
+
+        .view-toggle a.active {
+            background: var(--highlight);
+            border-color: var(--highlight);
+        }
+
+        .tree {
+            background: var(--card-bg);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .tree ul {
+            list-style: none;
+            padding-left: 1.5rem;
+        }
+
+        .tree > ul {
+            padding-left: 0;
+        }
+
+        .tree li {
+            position: relative;
+            padding: 0.15rem 0;
+        }
+
+        .tree .folder {
+            cursor: pointer;
+            color: var(--highlight);
+        }
+
+        .tree .folder::before {
+            content: "📁 ";
+        }
+
+        .tree .folder.collapsed::before {
+            content: "📂 ";
+        }
+
+        .tree .file::before {
+            content: "📄 ";
+        }
+
+        .tree .file-info {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+
+        .tree .collapsed + ul {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -348,10 +423,21 @@ CATALOG_TEMPLATE = """
 <div class="search-box">
     <form action="/catalog/{{ catalog_name }}" method="get">
         <input type="text" name="q" placeholder="Filter files in this catalog..." value="{{ query or '' }}">
+        <input type="hidden" name="view" value="{{ view }}">
     </form>
 </div>
 
+<div class="view-toggle">
+    <a href="?view=table{% if query %}&q={{ query }}{% endif %}" class="{% if view != 'tree' %}active{% endif %}">📋 Table</a>
+    <a href="?view=tree{% if query %}&q={{ query }}{% endif %}" class="{% if view == 'tree' %}active{% endif %}">🌲 Tree</a>
+</div>
+
 {% if files %}
+{% if view == 'tree' %}
+<div class="tree">
+    {{ tree_html|safe }}
+</div>
+{% else %}
 <div class="table-container">
     <table class="file-table">
         <thead>
@@ -380,23 +466,24 @@ CATALOG_TEMPLATE = """
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?page={{ page - 1 }}{% if query %}&q={{ query }}{% endif %}">&laquo; Prev</a>
+    <a href="?page={{ page - 1 }}&view={{ view }}{% if query %}&q={{ query }}{% endif %}">&laquo; Prev</a>
     {% endif %}
 
     {% for p in range(1, total_pages + 1) %}
         {% if p == page %}
         <span class="active">{{ p }}</span>
         {% elif p <= 3 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
-        <a href="?page={{ p }}{% if query %}&q={{ query }}{% endif %}">{{ p }}</a>
+        <a href="?page={{ p }}&view={{ view }}{% if query %}&q={{ query }}{% endif %}">{{ p }}</a>
         {% elif p == 4 or p == total_pages - 2 %}
         <span>...</span>
         {% endif %}
     {% endfor %}
 
     {% if page < total_pages %}
-    <a href="?page={{ page + 1 }}{% if query %}&q={{ query }}{% endif %}">Next &raquo;</a>
+    <a href="?page={{ page + 1 }}&view={{ view }}{% if query %}&q={{ query }}{% endif %}">Next &raquo;</a>
     {% endif %}
 </div>
+{% endif %}
 {% endif %}
 
 {% else %}
@@ -519,6 +606,83 @@ def format_file_item(
     return result
 
 
+def build_tree_html(files: list[dict[str, Any]]) -> str:
+    """Build an HTML tree structure from a flat list of files.
+
+    Args:
+        files: List of file dictionaries with 'path' and 'name' keys.
+
+    Returns:
+        HTML string representing the tree structure.
+    """
+    # Build tree structure
+    tree: dict[str, Any] = {}
+    for file in files:
+        path = file["path"]
+        parts = path.strip("/").split("/") if path else []
+        current = tree
+        for part in parts:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        # Store file info at the leaf
+        current[file["name"]] = {"__file__": file}
+
+    def render_node(node: dict[str, Any], level: int = 0) -> str:
+        """Recursively render tree nodes as HTML."""
+        html_parts = []
+        # Sort: folders first, then files
+        folders = sorted(
+            [
+                k
+                for k in node
+                if not isinstance(node[k].get("__file__"), dict)
+                or "__file__" not in node[k]
+            ]
+        )
+        files_here = sorted(
+            [
+                k
+                for k in node
+                if isinstance(node.get(k, {}), dict) and "__file__" in node.get(k, {})
+            ]
+        )
+
+        # Actually separate folders and files properly
+        folders = []
+        files_here = []
+        for key, value in node.items():
+            if isinstance(value, dict):
+                if "__file__" in value and len(value) == 1:
+                    files_here.append((key, value["__file__"]))
+                else:
+                    folders.append((key, value))
+
+        folders.sort(key=lambda x: x[0].lower())
+        files_here.sort(key=lambda x: x[0].lower())
+
+        for folder_name, folder_content in folders:
+            # Filter out __file__ for subfolders that also have files
+            sub_content = {k: v for k, v in folder_content.items() if k != "__file__"}
+            if sub_content:
+                html_parts.append(f'<li><span class="folder">{folder_name}</span>')
+                html_parts.append("<ul>")
+                html_parts.append(render_node(sub_content, level + 1))
+                html_parts.append("</ul></li>")
+
+        for file_name, file_info in files_here:
+            size = file_info.get("size_fmt", "")
+            date = file_info.get("date_fmt", "")
+            html_parts.append(
+                f'<li><span class="file">{file_name}</span>'
+                f'<span class="file-info">({size}, {date})</span></li>'
+            )
+
+        return "\n".join(html_parts)
+
+    return f"<ul>{render_node(tree)}</ul>"
+
+
 @app.route("/")
 def home() -> str:
     """Home page showing all catalogs."""
@@ -547,6 +711,7 @@ def view_catalog(name: str) -> str:
     """View a specific catalog."""
     page = request.args.get("page", 1, type=int)
     query = request.args.get("q", "")
+    view = request.args.get("view", "table")
     per_page = 100
 
     try:
@@ -565,10 +730,16 @@ def view_catalog(name: str) -> str:
     total_size = sum(f[3] for f in all_files)  # size is at index 3
     total_pages = (total_files + per_page - 1) // per_page
 
-    # Paginate
-    start = (page - 1) * per_page
-    end = start + per_page
-    files = [format_file_item(f) for f in all_files[start:end]]
+    # For tree view, show all files (no pagination)
+    if view == "tree":
+        files = [format_file_item(f) for f in all_files]
+        tree_html = build_tree_html(files)
+    else:
+        # Paginate for table view
+        start = (page - 1) * per_page
+        end = start + per_page
+        files = [format_file_item(f) for f in all_files[start:end]]
+        tree_html = ""
 
     return render_template(
         "catalog",
@@ -580,6 +751,8 @@ def view_catalog(name: str) -> str:
         page=page,
         total_pages=total_pages,
         query=query,
+        view=view,
+        tree_html=tree_html,
     )
 
 
