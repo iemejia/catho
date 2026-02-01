@@ -1,7 +1,9 @@
 //! File system operations for catho.
 
+use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use walkdir::WalkDir;
 
 use crate::error::{CathoError, Result};
@@ -153,7 +155,18 @@ pub fn select_catalogs(selection: Option<&[String]>) -> Result<Vec<String>> {
     }
 }
 
+/// Intermediate file entry before hashing (used for parallel processing).
+#[derive(Debug, Clone)]
+struct PendingFile {
+    path: PathBuf,
+    name: String,
+    date: i64,
+    size: u64,
+    rel_path: String,
+}
+
 /// Iterator over files in a directory, yielding batches of FileItems.
+/// Uses parallel hashing for improved performance on multi-core systems.
 pub struct FileIterator {
     walker: walkdir::IntoIter,
     root: PathBuf,
@@ -172,11 +185,12 @@ impl FileIterator {
         }
     }
 
-    /// Get the next batch of file items.
+    /// Get the next batch of file items with parallel hash calculation.
     pub fn next_batch(&mut self) -> Result<Option<Vec<FileItem>>> {
-        let mut items = Vec::with_capacity(self.batch_size);
+        // Phase 1: Collect file metadata (fast, sequential)
+        let mut pending: Vec<PendingFile> = Vec::with_capacity(self.batch_size);
 
-        while items.len() < self.batch_size {
+        while pending.len() < self.batch_size {
             match self.walker.next() {
                 None => break,
                 Some(Err(e)) => {
@@ -184,62 +198,83 @@ impl FileIterator {
                     continue;
                 }
                 Some(Ok(entry)) => {
-                    let path = entry.path();
-
-                    // Skip non-files
-                    if !path.is_file() {
+                    // Use entry's file_type to avoid extra stat call
+                    let file_type = entry.file_type();
+                    if !file_type.is_file() {
                         continue;
                     }
 
-                    // Get file info
-                    let (size, date) = match get_file_info(path) {
-                        Ok(info) => info,
+                    // Get metadata from DirEntry (avoids extra stat call)
+                    let metadata = match entry.metadata() {
+                        Ok(m) => m,
                         Err(e) => {
-                            tracing::warn!("Error getting file info for {:?}: {}", path, e);
+                            tracing::warn!("Error getting metadata for {:?}: {}", entry.path(), e);
                             continue;
                         }
                     };
 
-                    // Get relative path
+                    let size = metadata.len();
+                    let date = metadata
+                        .modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs() as i64)
+                        .unwrap_or(0);
+
+                    let path = entry.path().to_path_buf();
+                    let name = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+
                     let rel_path = path
                         .parent()
                         .and_then(|p| p.strip_prefix(&self.root).ok())
                         .map(|p| p.to_string_lossy().to_string())
                         .unwrap_or_else(|| ".".to_string());
 
-                    let name = path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
-
-                    // Calculate hash
-                    let hash = match file_hash(path, self.hash_type) {
-                        Ok(h) => h,
-                        Err(e) => {
-                            tracing::warn!("Error hashing file {:?}: {}", path, e);
-                            None
-                        }
-                    };
-
-                    items.push(FileItem::new(None, name, date, size, rel_path, hash));
+                    pending.push(PendingFile {
+                        path,
+                        name,
+                        date,
+                        size,
+                        rel_path,
+                    });
                 }
             }
         }
 
-        if items.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(items))
+        if pending.is_empty() {
+            return Ok(None);
         }
+
+        // Phase 2: Calculate hashes in parallel (slow, CPU/IO bound)
+        let hash_type = self.hash_type;
+        let items: Vec<FileItem> = pending
+            .into_par_iter()
+            .map(|pf| {
+                let hash = match file_hash(&pf.path, hash_type) {
+                    Ok(h) => h,
+                    Err(e) => {
+                        tracing::warn!("Error hashing file {:?}: {}", pf.path, e);
+                        None
+                    }
+                };
+                FileItem::new(None, pf.name, pf.date, pf.size, pf.rel_path, hash)
+            })
+            .collect();
+
+        Ok(Some(items))
     }
 }
 
 /// Count the total number of files in a directory.
+/// Uses file_type() from DirEntry to avoid extra stat calls.
 pub fn count_files(path: &Path) -> usize {
     WalkDir::new(path)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file())
+        .filter(|e| e.file_type().is_file())
         .count()
 }
 
