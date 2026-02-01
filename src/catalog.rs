@@ -7,16 +7,16 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 use crate::db::{
-    CatalogMetadata, db_create, db_delete_catalog, db_get_catalog, db_get_deleted_ids,
-    db_get_inserted_catalogs, db_get_metadata, db_insert_catalog, db_insert_metadata,
-    db_update_lastmodifdate, get_catalog_by_hash, get_catalog_by_pattern, get_catalog_by_regex,
+    db_create, db_delete_catalog, db_get_catalog, db_get_deleted_ids, db_get_inserted_catalogs,
+    db_get_metadata, db_insert_catalog, db_insert_metadata, db_update_lastmodifdate,
+    get_catalog_by_hash, get_catalog_by_pattern, get_catalog_by_regex, CatalogMetadata,
 };
 use crate::error::{CathoError, Result};
 use crate::file::{
-    CatalogInfo, FileItem, FileIterator, count_files, get_catalog_abspath, get_catalogs,
-    remove_catalog_files, select_catalogs,
+    count_files, get_catalog_abspath, get_catalogs, remove_catalog_files, select_catalogs,
+    CatalogInfo, FileItem, FileIterator,
 };
-use crate::utils::{HashType, file_hash, sizeof_fmt};
+use crate::utils::{file_hash, sizeof_fmt, HashType};
 
 /// Search result from a catalog.
 #[derive(Debug, Clone)]
@@ -246,10 +246,10 @@ pub fn scan_catalogs(path: &str) -> Result<Vec<SearchResult>> {
         }
     } else if target.is_dir() {
         for entry in WalkDir::new(target).into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file()
-                && let Ok(Some(hash)) = file_hash(entry.path(), HashType::Sha256)
-            {
-                hashes.push(hash);
+            if entry.path().is_file() {
+                if let Ok(Some(hash)) = file_hash(entry.path(), HashType::Sha256) {
+                    hashes.push(hash);
+                }
             }
         }
     }

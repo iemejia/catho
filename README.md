@@ -1,5 +1,8 @@
 # Catho
 
+[![Crates.io](https://img.shields.io/crates/v/catho.svg)](https://crates.io/crates/catho)
+[![Documentation](https://docs.rs/catho/badge.svg)](https://docs.rs/catho)
+[![CI](https://github.com/iemejia/catho/actions/workflows/ci.yml/badge.svg)](https://github.com/iemejia/catho/actions/workflows/ci.yml)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 **Catho** is a command-line file catalog manager inspired by Robert Vasicek's

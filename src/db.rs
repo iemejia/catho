@@ -1,13 +1,13 @@
 //! Database operations for catho.
 
 use regex::Regex;
-use rusqlite::{Connection, functions::FunctionFlags, params};
+use rusqlite::{functions::FunctionFlags, params, Connection};
 use std::collections::HashMap;
 use std::path::Path;
 
 use crate::error::{CathoError, Result};
-use crate::file::{FileItem, get_catalog_abspath};
-use crate::utils::{HashType, touch_dir};
+use crate::file::{get_catalog_abspath, FileItem};
+use crate::utils::{touch_dir, HashType};
 
 /// SQL statements.
 const SQL_CREATE_METADATA: &str = "CREATE TABLE METADATA (key TEXT, value TEXT)";
@@ -255,10 +255,10 @@ pub fn db_get_deleted_ids(name: &str) -> Result<Vec<i64>> {
             root.join(&item.path).join(&item.name)
         };
 
-        if !full_path.exists()
-            && let Some(id) = item.id
-        {
-            deleted_ids.push(id);
+        if !full_path.exists() {
+            if let Some(id) = item.id {
+                deleted_ids.push(id);
+            }
         }
     }
 

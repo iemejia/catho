@@ -1,11 +1,11 @@
 //! Web server implementation using Axum.
 
 use axum::{
-    Router,
     extract::{Path, Query},
-    http::{StatusCode, header},
+    http::{header, StatusCode},
     response::{Html, IntoResponse, Json, Response},
     routing::get,
+    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -387,7 +387,12 @@ struct TreeNode<'a> {
 impl<'a> TreeNode<'a> {
     /// Count total files in this node and all children.
     fn total_files(&self) -> usize {
-        self.files.len() + self.children.values().map(|c| c.total_files()).sum::<usize>()
+        self.files.len()
+            + self
+                .children
+                .values()
+                .map(|c| c.total_files())
+                .sum::<usize>()
     }
 
     /// Count matching files in this node and all children.
@@ -400,7 +405,12 @@ impl<'a> TreeNode<'a> {
                 .filter(|f| Self::file_matches(f, filter))
                 .count()
         };
-        file_matches + self.children.values().map(|c| c.count_matches(filter)).sum::<usize>()
+        file_matches
+            + self
+                .children
+                .values()
+                .map(|c| c.count_matches(filter))
+                .sum::<usize>()
     }
 
     /// Check if a file matches the filter.
@@ -409,8 +419,7 @@ impl<'a> TreeNode<'a> {
             return true;
         }
         let pattern = filter.to_lowercase();
-        file.name.to_lowercase().contains(&pattern)
-            || file.path.to_lowercase().contains(&pattern)
+        file.name.to_lowercase().contains(&pattern) || file.path.to_lowercase().contains(&pattern)
     }
 
     /// Render this node and its children as HTML.

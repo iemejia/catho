@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::error::{CathoError, Result};
-use crate::utils::{HashType, file_hash, get_file_info};
+use crate::utils::{file_hash, get_file_info, HashType};
 
 /// Catho data directory (~/.catho).
 pub fn catho_path() -> PathBuf {
@@ -97,21 +97,22 @@ pub fn get_catalogs() -> Result<Vec<CatalogInfo>> {
         let entry = entry?;
         let path = entry.path();
 
-        if let Some(ext) = path.extension()
-            && ext == "db"
-            && let Some(stem) = path.file_stem()
-        {
-            let name = stem.to_string_lossy().to_string();
-            let metadata = fs::metadata(&path)?;
-            let (size, date) = (
-                metadata.len(),
-                metadata
-                    .modified()?
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_secs() as i64)
-                    .unwrap_or(0),
-            );
-            catalogs.push(CatalogInfo { name, size, date });
+        if let Some(ext) = path.extension() {
+            if ext == "db" {
+                if let Some(stem) = path.file_stem() {
+                    let name = stem.to_string_lossy().to_string();
+                    let metadata = fs::metadata(&path)?;
+                    let (size, date) = (
+                        metadata.len(),
+                        metadata
+                            .modified()?
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_secs() as i64)
+                            .unwrap_or(0),
+                    );
+                    catalogs.push(CatalogInfo { name, size, date });
+                }
+            }
         }
     }
 

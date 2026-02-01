@@ -1,13 +1,22 @@
 [package]
 name = "catho"
-version = "0.2.0"
-edition = "2024"
-authors = ["Ismael Lacerda"]
+version = "0.3.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["Ismael Mejia <iemejia@gmail.com>"]
 description = "A command-line file catalog manager for indexing and searching files across media"
 license = "LGPL-3.0-or-later"
-repository = "https://github.com/ismaelc/catho"
+repository = "https://github.com/iemejia/catho"
+homepage = "https://github.com/iemejia/catho"
+documentation = "https://docs.rs/catho"
+readme = "README.md"
 keywords = ["catalog", "files", "index", "search", "hash"]
 categories = ["command-line-utilities", "filesystem"]
+exclude = [
+    ".github/",
+    ".gitignore",
+    "target/",
+]
 
 [dependencies]
 # CLI
@@ -61,3 +70,7 @@ opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
