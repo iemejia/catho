@@ -394,12 +394,16 @@ pub fn db_update_lastmodifdate(name: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::file::{reset_catalog_dir, set_catalog_dir};
     use tempfile::TempDir;
 
     fn setup_test_catalog(name: &str) -> TempDir {
+        // Reset any previous catalog dir setting
+        reset_catalog_dir();
+
         let temp_dir = TempDir::new().unwrap();
-        // SAFETY: Tests run in isolation and set HOME for this process only
-        unsafe { std::env::set_var("HOME", temp_dir.path()) };
+        // Set catalog directory to temp location
+        set_catalog_dir(temp_dir.path().to_path_buf());
 
         db_create(name).unwrap();
         let metadata = CatalogMetadata::new(name, "/test", "/test", HashType::Sha256);

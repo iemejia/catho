@@ -30,6 +30,11 @@ use crate::utils::HashType;
 fn main() -> ExitCode {
     let cli = Cli::parse_args();
 
+    // Set custom catalog directory from CATHO_DIR env var if set
+    if let Ok(dir) = std::env::var("CATHO_DIR") {
+        crate::file::set_catalog_dir(std::path::PathBuf::from(dir));
+    }
+
     // Setup logging
     let log_level = if cli.silent {
         "off"

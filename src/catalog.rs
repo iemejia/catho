@@ -384,14 +384,18 @@ pub fn format_catalog_info(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::file::{reset_catalog_dir, set_catalog_dir};
     use tempfile::TempDir;
 
     fn setup_test_env() -> (TempDir, TempDir) {
-        let home_dir = TempDir::new().unwrap();
+        // Reset any previous catalog dir setting
+        reset_catalog_dir();
+
+        let catalog_dir = TempDir::new().unwrap();
         let data_dir = TempDir::new().unwrap();
 
-        // SAFETY: Tests run in isolation and set HOME for this process only
-        unsafe { std::env::set_var("HOME", home_dir.path()) };
+        // Set catalog directory to temp location
+        set_catalog_dir(catalog_dir.path().to_path_buf());
 
         // Create some test files
         fs::write(data_dir.path().join("file1.txt"), "hello").unwrap();
@@ -399,7 +403,7 @@ mod tests {
         fs::create_dir(data_dir.path().join("subdir")).unwrap();
         fs::write(data_dir.path().join("subdir/file3.txt"), "test").unwrap();
 
-        (home_dir, data_dir)
+        (catalog_dir, data_dir)
     }
 
     #[test]

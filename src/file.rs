@@ -3,23 +3,40 @@
 use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
 use std::time::SystemTime;
 use walkdir::WalkDir;
 
 use crate::error::{CathoError, Result};
 use crate::utils::{file_hash, HashType};
 
+static CATALOG_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
+
+/// Set custom catalog directory.
+pub fn set_catalog_dir(path: PathBuf) {
+    *CATALOG_DIR.write().unwrap() = Some(path);
+}
+
+/// Reset catalog directory to default (for testing).
+#[cfg(test)]
+pub fn reset_catalog_dir() {
+    *CATALOG_DIR.write().unwrap() = None;
+}
+
 /// Catho catalog directory.
 ///
-/// Platform-specific paths:
+/// Priority: custom dir (via set_catalog_dir) > platform default
+/// Platform-specific defaults:
 /// - Linux: `~/.config/catho/catalogs`
 /// - macOS: `~/Library/Application Support/catho/catalogs`
 /// - Windows: `C:\Users\<User>\AppData\Roaming\catho\catalogs`
 pub fn catho_path() -> PathBuf {
-    dirs::config_dir()
-        .expect("Could not find config directory")
-        .join("catho")
-        .join("catalogs")
+    CATALOG_DIR.read().unwrap().clone().unwrap_or_else(|| {
+        dirs::config_dir()
+            .expect("Could not find config directory")
+            .join("catho")
+            .join("catalogs")
+    })
 }
 
 /// Extension for catalog database files.
@@ -297,6 +314,8 @@ mod tests {
 
     #[test]
     fn test_catho_path() {
+        // Reset to default to test the fallback behavior
+        reset_catalog_dir();
         let path = catho_path();
         assert!(path.to_string_lossy().contains("catho"));
         assert!(path.ends_with("catho/catalogs") || path.ends_with("catho\\catalogs"));

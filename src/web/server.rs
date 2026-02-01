@@ -95,7 +95,7 @@ pub struct FileResponse {
 /// Constants.
 const DEFAULT_PAGE_SIZE: usize = 100;
 const MAX_SEARCH_RESULTS_PER_CATALOG: usize = 100;
-const MAX_TREE_VIEW_FILES: usize = 5000;
+const MAX_TREE_VIEW_FILES: usize = 100_000;
 
 /// Catalog name validation regex.
 fn is_valid_catalog_name(name: &str) -> bool {
