@@ -1,11 +1,9 @@
 """Catalog operations for catho."""
 
-from __future__ import annotations
-
 import logging
-import os
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from catho.db import (
@@ -293,11 +291,12 @@ def update_catalog(name: str, path: str) -> None:
         name: Catalog name.
         path: Path to re-scan.
     """
-    if not os.path.exists(file_get_catalog_abspath(name)):
+    catalog_path = file_get_catalog_abspath(name)
+    if not catalog_path.exists():
         logger.warning("catalog %s not found.", name)
         return
 
-    fullpath = os.path.abspath(path)
+    fullpath = str(Path(path).resolve())
     m = db_get_metadata(name)
 
     if name != m["name"] or fullpath != m["fullpath"]:
@@ -349,13 +348,14 @@ def create_catalog(
     Returns:
         True if catalog was created, False if it already exists.
     """
-    if not force and os.path.exists(file_get_catalog_abspath(name)):
+    catalog_path = file_get_catalog_abspath(name)
+    if not force and catalog_path.exists():
         logger.warning("Catalog: %s already exists", name)
         return False
 
     logger.info("Creating catalog: %s", name)
 
-    fullpath = os.path.abspath(path)
+    fullpath = str(Path(path).resolve())
     metadata = build_metadata(name, path, fullpath, hash_type)
     db_create(name)
     db_insert_metadata(name, metadata)
@@ -379,12 +379,13 @@ def scan_catalogs(name: str) -> dict[str, dict[str, list[tuple[Any, ...]]]]:
         Dictionary mapping file names to their catalog matches.
     """
     result: dict[str, dict[str, list[tuple[Any, ...]]]] = {}
+    scan_path = Path(name)
 
-    if not os.path.exists(name):
+    if not scan_path.exists():
         logger.error("impossible to scan, invalid path: %s", name)
         return result
 
-    if os.path.isdir(name):
+    if scan_path.is_dir():
         logger.info("scanning dir: %s", name)
         # TODO: Implement directory scanning
     else:

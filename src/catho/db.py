@@ -1,11 +1,9 @@
 """Database operations for catho."""
 
-from __future__ import annotations
-
 import logging
-import os
 import re
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from catho.file import FileItem, file_get_catalog_abspath
@@ -52,20 +50,20 @@ def _db_create_schema(name: str) -> None:
     Args:
         name: Name of the catalog.
     """
+    db_path = file_get_catalog_abspath(name)
     try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        c.execute("DROP TABLE IF EXISTS METADATA;")
-        c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
-        c.execute("DROP TABLE IF EXISTS CATALOG;")
-        c.execute(
-            "CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "name TEXT NOT NULL, date INTEGER NOT NULL, "
-            "size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);"
-        )
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            conn.text_factory = str
+            c = conn.cursor()
+            c.execute("DROP TABLE IF EXISTS METADATA;")
+            c.execute("CREATE TABLE METADATA (key TEXT, value TEXT);")
+            c.execute("DROP TABLE IF EXISTS CATALOG;")
+            c.execute(
+                "CREATE TABLE CATALOG (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "name TEXT NOT NULL, date INTEGER NOT NULL, "
+                "size INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT);"
+            )
+            conn.commit()
     except sqlite3.Error as e:
         logger.error("An error occurred: %s", e)
 
@@ -78,14 +76,14 @@ def _db_executemany(name: str, query: str, items: list[Any]) -> None:
         query: SQL query to execute.
         items: List of parameter tuples.
     """
+    db_path = file_get_catalog_abspath(name)
     try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        logger.debug("SQL: Executing %s %s", query, items)
-        c.executemany(query, items)
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            conn.text_factory = str
+            c = conn.cursor()
+            logger.debug("SQL: Executing %s %s", query, items)
+            c.executemany(query, items)
+            conn.commit()
     except sqlite3.Error as e:
         logger.error("An error occurred: %s", e)
 
@@ -105,19 +103,18 @@ def _db_get_all(
     Returns:
         List of result rows.
     """
-    rows: list[tuple[Any, ...]] = []
+    db_path = file_get_catalog_abspath(name)
     try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        conn.create_function("REGEX", 2, _db_regex)
-        c = conn.cursor()
-        logger.debug("SQL: Executing %s %s", query, params)
-        c.execute(query, params)
-        rows = c.fetchall()
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            conn.text_factory = str
+            conn.create_function("REGEX", 2, _db_regex)
+            c = conn.cursor()
+            logger.debug("SQL: Executing %s %s", query, params)
+            c.execute(query, params)
+            return c.fetchall()
     except sqlite3.Error as e:
         logger.error("An error occurred: %s", e)
-    return rows
+        return []
 
 
 def _db_get_some(
@@ -135,20 +132,20 @@ def _db_get_some(
     Returns:
         Combined list of all result rows.
     """
-    if params_list is None:
-        params_list = []
+    if not params_list:
+        return []
 
+    db_path = file_get_catalog_abspath(name)
     rows: list[tuple[Any, ...]] = []
     try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        conn.create_function("REGEX", 2, _db_regex)
-        c = conn.cursor()
-        for param in params_list:
-            logger.debug("SQL: Executing %s %s", query, param)
-            c.execute(query, param)
-            rows.extend(c.fetchall())
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            conn.text_factory = str
+            conn.create_function("REGEX", 2, _db_regex)
+            c = conn.cursor()
+            for param in params_list:
+                logger.debug("SQL: Executing %s %s", query, param)
+                c.execute(query, param)
+                rows.extend(c.fetchall())
     except sqlite3.Error as e:
         logger.error("An error occurred: %s", e)
     return rows
@@ -163,22 +160,21 @@ def db_get_deleted_ids(name: str) -> list[int]:
     Returns:
         List of IDs for deleted files.
     """
-    from catho.db import db_get_metadata
-
     m = db_get_metadata(name)
     deleted: list[int] = []
+    db_path = file_get_catalog_abspath(name)
+
     try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        logger.debug("SQL: Executing %s", SQL_SELECT_CATALOG)
-        for row_id, row_name, _date, _size, path, _hash in c.execute(
-            SQL_SELECT_CATALOG
-        ):
-            filename = os.path.join(m["fullpath"], path, row_name)
-            if not os.path.isfile(filename):
-                deleted.append(row_id)
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            conn.text_factory = str
+            c = conn.cursor()
+            logger.debug("SQL: Executing %s", SQL_SELECT_CATALOG)
+            for row_id, row_name, _date, _size, path, _hash in c.execute(
+                SQL_SELECT_CATALOG
+            ):
+                filepath = Path(m["fullpath"]) / path / row_name
+                if not filepath.is_file():
+                    deleted.append(row_id)
     except sqlite3.Error as e:
         logger.error("An error occurred: %s", e)
     return deleted
@@ -287,7 +283,7 @@ def get_catalog_by_path(name: str, path: str) -> list[tuple[Any, ...]]:
     Returns:
         List of matching items.
     """
-    return _db_get_all(name, SQL_SELECT_CATALOG_BY_PATH, (path + "%",))
+    return _db_get_all(name, SQL_SELECT_CATALOG_BY_PATH, (f"{path}%",))
 
 
 def db_delete_catalog(name: str, ids: list[int]) -> None:
@@ -298,14 +294,14 @@ def db_delete_catalog(name: str, ids: list[int]) -> None:
         ids: List of IDs to delete.
     """
     query = SQL_DELETE_CATALOG % ",".join(map(str, ids))
+    db_path = file_get_catalog_abspath(name)
     try:
-        conn = sqlite3.connect(file_get_catalog_abspath(name))
-        conn.text_factory = str
-        c = conn.cursor()
-        logger.debug("SQL: Executing %s", query)
-        c.execute(query)
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            conn.text_factory = str
+            c = conn.cursor()
+            logger.debug("SQL: Executing %s", query)
+            c.execute(query)
+            conn.commit()
     except sqlite3.Error as e:
         logger.error("An error occurred: %s", e)
 

@@ -1,11 +1,9 @@
 """Command-line interface for catho."""
 
-from __future__ import annotations
-
 import argparse
+import contextlib
 import logging
 import sys
-from typing import NoReturn
 
 from catho._version import __version__
 from catho.catalog import (
@@ -130,7 +128,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int | NoReturn:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI.
 
     Args:
@@ -172,8 +170,8 @@ def main(argv: list[str] | None = None) -> int | NoReturn:
 
     elif args.command == "ls":
         if not args.names:
-            catalogs = file_get_catalogs()
-            logger.info(catalogs_str(catalogs))
+            all_catalogs = file_get_catalogs()
+            logger.info(catalogs_str(all_catalogs))
         else:
             logger.info(catalogs_info_str(args.names))
 
@@ -181,36 +179,35 @@ def main(argv: list[str] | None = None) -> int | NoReturn:
         file_rm_catalog_file(args.names)
 
     elif args.command == "find":
+        search_catalogs: list[str]
         if args.catalogs[0]:
-            catalogs = args.catalogs[0]
+            search_catalogs = args.catalogs[0]
         else:
-            catalogs = [str(catalog["name"]) for catalog in file_get_catalogs()]
+            search_catalogs = [str(c["name"]) for c in file_get_catalogs()]
 
-        str_catalogs = ", ".join(catalogs)
+        str_catalogs = ", ".join(search_catalogs)
         logger.info("Finding %s in (%s)", args.pattern, str_catalogs)
 
-        matches = find_in_catalogs(args.pattern, catalogs)
+        matches = find_in_catalogs(args.pattern, search_catalogs)
 
         count = 0
-        for catalog, items in matches.items():
+        for catalog_name, items in matches.items():
             count += len(items)
-            logger.info("%s:", catalog)
+            logger.info("%s:", catalog_name)
             logger.info(catalog_to_str(items))
 
         logger.info("%s items found", count)
 
     elif args.command == "scan":
-        matches = scan_catalogs(args.name)
-        for name, m in matches.items():
-            logger.info("%s found in catalogs: %s", name, list(m.keys()))
+        scan_matches = scan_catalogs(args.name)
+        for name, catalog_matches in scan_matches.items():
+            logger.info("%s found in catalogs: %s", name, list(catalog_matches.keys()))
 
     elif args.command == "help":
-        # Show help for specific command
-        subparser = parser._subparsers._actions[2]  # Get subparsers action
-        if hasattr(subparser, "choices") and args.cmd in subparser.choices:
-            subparser.choices[args.cmd].print_help()
-        else:
-            parser.print_help()
+        # Show help for specific command by re-invoking with -h
+        # This is a cleaner approach than accessing private parser internals
+        with contextlib.suppress(SystemExit):
+            create_parser().parse_args([args.cmd, "-h"])
 
     else:
         parser.print_help()

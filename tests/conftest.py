@@ -1,7 +1,5 @@
 """Pytest configuration and fixtures for catho tests."""
 
-from __future__ import annotations
-
 import shutil
 import tempfile
 from collections.abc import Generator
@@ -14,11 +12,12 @@ import pytest
 def temp_catho_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
     """Create a temporary directory for catho catalogs.
 
-    This fixture patches catho.file.catho_path to use a temp directory.
+    This fixture patches catho.file.CATHO_PATH to use a temp directory.
     """
     temp_dir = Path(tempfile.mkdtemp())
     import catho.file as file_module
 
+    monkeypatch.setattr(file_module, "CATHO_PATH", temp_dir)
     monkeypatch.setattr(file_module, "catho_path", str(temp_dir))
 
     yield temp_dir

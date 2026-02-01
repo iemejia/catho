@@ -1,7 +1,5 @@
 """Tests for catho utility functions."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from catho.utils import (
