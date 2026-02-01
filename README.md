@@ -129,7 +129,13 @@ Then open http://localhost:8080 in your browser.
 
 ## Catalog Storage
 
-Catalogs are stored as SQLite databases in `~/.catho/`. Each catalog contains:
+Catalogs are stored as SQLite databases in a platform-specific config directory:
+
+- **Linux:** `~/.config/catho/catalogs/`
+- **macOS:** `~/Library/Application Support/catho/catalogs/`
+- **Windows:** `C:\Users\<User>\AppData\Roaming\catho\catalogs\`
+
+Each catalog contains:
 
 - File names and paths (relative to the indexed root)
 - File sizes and modification dates

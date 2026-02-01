@@ -7,11 +7,17 @@ use walkdir::WalkDir;
 use crate::error::{CathoError, Result};
 use crate::utils::{file_hash, get_file_info, HashType};
 
-/// Catho data directory (~/.catho).
+/// Catho catalog directory.
+///
+/// Platform-specific paths:
+/// - Linux: `~/.config/catho/catalogs`
+/// - macOS: `~/Library/Application Support/catho/catalogs`
+/// - Windows: `C:\Users\<User>\AppData\Roaming\catho\catalogs`
 pub fn catho_path() -> PathBuf {
-    dirs::home_dir()
-        .expect("Could not find home directory")
-        .join(".catho")
+    dirs::config_dir()
+        .expect("Could not find config directory")
+        .join("catho")
+        .join("catalogs")
 }
 
 /// Extension for catalog database files.
@@ -278,7 +284,8 @@ mod tests {
     #[test]
     fn test_catho_path() {
         let path = catho_path();
-        assert!(path.to_string_lossy().contains(".catho"));
+        assert!(path.to_string_lossy().contains("catho"));
+        assert!(path.ends_with("catho/catalogs") || path.ends_with("catho\\catalogs"));
     }
 
     #[test]

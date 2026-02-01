@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Catalog storage location changed from `~/.catho/` to platform-specific config directory:
+  - Linux: `~/.config/catho/catalogs/`
+  - macOS: `~/Library/Application Support/catho/catalogs/`
+  - Windows: `C:\Users\<User>\AppData\Roaming\catho\catalogs\`
+  - Migration: Manually move existing `.db` files from `~/.catho/` to the new location
+
 ## [0.3.0] - 2025-02-01
 
 ### Changed
