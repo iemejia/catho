@@ -1,0 +1,63 @@
+[package]
+name = "catho"
+version = "0.2.0"
+edition = "2024"
+authors = ["Ismael Lacerda"]
+description = "A command-line file catalog manager for indexing and searching files across media"
+license = "LGPL-3.0-or-later"
+repository = "https://github.com/ismaelc/catho"
+keywords = ["catalog", "files", "index", "search", "hash"]
+categories = ["command-line-utilities", "filesystem"]
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Database
+rusqlite = { version = "0.33", features = ["bundled", "functions"] }
+
+# Hashing
+sha2 = "0.10"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# File system
+walkdir = "2.5"
+dirs = "6.0"
+
+# Regex
+regex = "1.11"
+
+# Serialization (for export)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Web UI (optional)
+axum = { version = "0.8", optional = true }
+tokio = { version = "1.43", features = ["full"], optional = true }
+tower-http = { version = "0.6", features = ["fs", "set-header"], optional = true }
+
+[features]
+default = []
+web = ["axum", "tokio", "tower-http"]
+
+[dev-dependencies]
+tempfile = "3.15"
+assert_cmd = "2.0"
+predicates = "3.1"
+
+[[bin]]
+name = "catho"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

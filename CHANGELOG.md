@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-02-01
+
+### Changed
+- **BREAKING**: Complete rewrite from Python to Rust
+- Uses SHA-256 instead of SHA-1 for file hashing
+- Web UI now uses Axum instead of Flask (optional `web` feature)
+- CLI uses clap for argument parsing
+
+### Added
+- `export` command to export catalogs to JSON format
+- Web UI with table and tree views (compile with `--features web`)
+- Better error messages and handling
+- Faster file indexing with parallel hashing
+
+### Removed
+- Python implementation (see v0.2.0 for last Python version)
+- Python dependencies
+
 ## [0.2.0] - 2024-12-XX
 
 ### Added

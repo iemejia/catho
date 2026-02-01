@@ -1,8 +1,5 @@
 # Catho
 
-[![CI](https://github.com/iemejia/catho/actions/workflows/ci.yml/badge.svg)](https://github.com/iemejia/catho/actions/workflows/ci.yml)
-[![PyPI version](https://badge.fury.io/py/catho.svg)](https://badge.fury.io/py/catho)
-[![Python versions](https://img.shields.io/pypi/pyversions/catho.svg)](https://pypi.org/project/catho/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 **Catho** is a command-line file catalog manager inspired by Robert Vasicek's
@@ -14,16 +11,24 @@ access to them.
 
 - **Index files** from any directory, including external drives and network shares
 - **Search catalogs** locally without needing access to the original media
-- **SHA-1 hashing** for duplicate file detection
+- **SHA-256 hashing** for duplicate file detection
 - **SQLite storage** for fast, portable catalog databases
 - **Pattern matching** with wildcards and regex support
+- **Web UI** for browsing catalogs (optional feature)
+- **Export to JSON** for integration with other tools
 
 ## Installation
 
-### From PyPI (recommended)
+### From crates.io (recommended)
 
 ```bash
-pip install catho
+cargo install catho
+```
+
+### With web UI support
+
+```bash
+cargo install catho --features web
 ```
 
 ### From source
@@ -31,15 +36,13 @@ pip install catho
 ```bash
 git clone https://github.com/iemejia/catho.git
 cd catho
-pip install -e .
+cargo build --release
+
+# Or with web UI:
+cargo build --release --features web
 ```
 
-### Development installation
-
-```bash
-pip install -e ".[dev]"
-pre-commit install
-```
+The binary will be at `target/release/catho`.
 
 ## Usage
 
@@ -50,7 +53,7 @@ pre-commit install
 catho add my-usb-drive /media/usb-drive
 
 # Index without calculating file hashes (faster)
-catho add my-backup /backup/folder -H None
+catho add my-backup /backup/folder -H none
 ```
 
 ### List catalogs
@@ -72,8 +75,8 @@ catho find "*.mp3"
 # Search in specific catalogs
 catho find "report*.pdf" my-usb-drive my-backup
 
-# Search all catalogs for files containing "photo"
-catho find "*photo*"
+# Search using regex
+catho find --regex "photo_[0-9]{4}\.jpg"
 ```
 
 ### Update a catalog
@@ -92,9 +95,34 @@ catho rm my-old-catalog
 ### Scan for duplicates
 
 ```bash
-# Check if a file exists in any catalog
+# Check if a file exists in any catalog (by hash)
 catho scan /path/to/file.txt
+
+# Scan an entire directory
+catho scan /path/to/folder
 ```
+
+### Export catalog
+
+```bash
+# Export to stdout (JSON)
+catho export my-catalog
+
+# Export to file
+catho export my-catalog -o catalog.json
+```
+
+### Web UI (requires `--features web`)
+
+```bash
+# Start web server on default port 8080
+catho web
+
+# Use custom port and host
+catho web -p 3000 --host 0.0.0.0
+```
+
+Then open http://localhost:8080 in your browser.
 
 ## Catalog Storage
 
@@ -102,38 +130,34 @@ Catalogs are stored as SQLite databases in `~/.catho/`. Each catalog contains:
 
 - File names and paths (relative to the indexed root)
 - File sizes and modification dates
-- SHA-1 hashes (optional) for duplicate detection
-
-For more details about the catalog structure, see
-[docs/catalog.sql](catho/docs/catalog.sql).
+- SHA-256 hashes (optional) for duplicate detection
 
 ## Development
 
 ### Running tests
 
 ```bash
-pytest
+cargo test -- --test-threads=1
 ```
 
-### Running tests with coverage
+### Building
 
 ```bash
-pytest --cov=src/catho --cov-report=html
+# Debug build
+cargo build
+
+# Release build
+cargo build --release
+
+# With web feature
+cargo build --release --features web
 ```
 
-### Linting and formatting
+### Linting
 
 ```bash
-ruff check src tests
-ruff format src tests
-mypy src/catho
-```
-
-### Building the package
-
-```bash
-pip install build
-python -m build
+cargo clippy
+cargo fmt --check
 ```
 
 ## Contributing
