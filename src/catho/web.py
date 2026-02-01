@@ -1,7 +1,11 @@
 """Web UI for catho catalog viewer."""
 
+import logging
+import re
+import sqlite3
 from collections.abc import Callable
 from datetime import datetime
+from html import escape as html_escape
 from typing import Any
 
 from flask import Flask, Response, jsonify, render_template, request
@@ -10,6 +14,16 @@ from jinja2 import BaseLoader, TemplateNotFound
 from catho.db import db_get_catalog, db_get_metadata, get_catalog_by_pattern
 from catho.file import file_get_catalogs
 from catho.utils import sizeof_fmt
+
+logger = logging.getLogger("catho")
+
+# Constants
+DEFAULT_PAGE_SIZE = 100
+MAX_SEARCH_RESULTS_PER_CATALOG = 100
+MAX_SEARCH_RESULTS_TOTAL = 500
+MAX_TREE_VIEW_FILES = 5000
+ALLOWED_VIEWS = {"table", "tree"}
+CATALOG_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 class DictLoader(BaseLoader):
@@ -269,6 +283,15 @@ BASE_TEMPLATE = """
             color: var(--text-muted);
         }
 
+        .warning {
+            background: #4a3f00;
+            border: 1px solid #856d00;
+            color: #ffd700;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
         .empty-state h2 {
             margin-bottom: 1rem;
         }
@@ -434,6 +457,9 @@ CATALOG_TEMPLATE = """
 
 {% if files %}
 {% if view == 'tree' %}
+{% if tree_warning %}
+<div class="warning">⚠️ {{ tree_warning }}</div>
+{% endif %}
 <div class="tree">
     {{ tree_html|safe }}
 </div>
@@ -578,6 +604,48 @@ TEMPLATES = {
 app.jinja_loader = DictLoader(TEMPLATES)
 
 
+@app.after_request
+def add_security_headers(response: Response) -> Response:
+    """Add security headers to all responses."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    )
+    return response
+
+
+def validate_catalog_name(name: str) -> bool:
+    """Validate catalog name to prevent path traversal.
+
+    Args:
+        name: Catalog name to validate.
+
+    Returns:
+        True if name is valid, False otherwise.
+    """
+    return bool(CATALOG_NAME_PATTERN.match(name))
+
+
+def escape_sql_like(pattern: str) -> str:
+    """Escape special characters in SQL LIKE patterns.
+
+    Args:
+        pattern: User-provided search pattern.
+
+    Returns:
+        Escaped pattern safe for SQL LIKE.
+    """
+    # Escape SQL LIKE special characters
+    pattern = pattern.replace("\\", "\\\\")
+    pattern = pattern.replace("%", "\\%")
+    pattern = pattern.replace("_", "\\_")
+    # Convert user wildcards to SQL wildcards
+    pattern = pattern.replace("*", "%")
+    return f"%{pattern}%"
+
+
 def format_file_item(
     item: tuple[Any, ...], catalog_name: str | None = None
 ) -> dict[str, Any]:
@@ -628,29 +696,13 @@ def build_tree_html(files: list[dict[str, Any]]) -> str:
         # Store file info at the leaf
         current[file["name"]] = {"__file__": file}
 
-    def render_node(node: dict[str, Any], level: int = 0) -> str:
+    def render_node(node: dict[str, Any]) -> str:
         """Recursively render tree nodes as HTML."""
-        html_parts = []
-        # Sort: folders first, then files
-        folders = sorted(
-            [
-                k
-                for k in node
-                if not isinstance(node[k].get("__file__"), dict)
-                or "__file__" not in node[k]
-            ]
-        )
-        files_here = sorted(
-            [
-                k
-                for k in node
-                if isinstance(node.get(k, {}), dict) and "__file__" in node.get(k, {})
-            ]
-        )
+        html_parts: list[str] = []
 
-        # Actually separate folders and files properly
-        folders = []
-        files_here = []
+        # Separate folders and files
+        folders: list[tuple[str, dict[str, Any]]] = []
+        files_here: list[tuple[str, dict[str, Any]]] = []
         for key, value in node.items():
             if isinstance(value, dict):
                 if "__file__" in value and len(value) == 1:
@@ -665,16 +717,18 @@ def build_tree_html(files: list[dict[str, Any]]) -> str:
             # Filter out __file__ for subfolders that also have files
             sub_content = {k: v for k, v in folder_content.items() if k != "__file__"}
             if sub_content:
-                html_parts.append(f'<li><span class="folder">{folder_name}</span>')
+                escaped_name = html_escape(folder_name)
+                html_parts.append(f'<li><span class="folder">{escaped_name}</span>')
                 html_parts.append("<ul>")
-                html_parts.append(render_node(sub_content, level + 1))
+                html_parts.append(render_node(sub_content))
                 html_parts.append("</ul></li>")
 
         for file_name, file_info in files_here:
-            size = file_info.get("size_fmt", "")
-            date = file_info.get("date_fmt", "")
+            escaped_name = html_escape(file_name)
+            size = html_escape(file_info.get("size_fmt", ""))
+            date = html_escape(file_info.get("date_fmt", ""))
             html_parts.append(
-                f'<li><span class="file">{file_name}</span>'
+                f'<li><span class="file">{escaped_name}</span>'
                 f'<span class="file-info">({size}, {date})</span></li>'
             )
 
@@ -707,37 +761,56 @@ def home() -> str:
 
 
 @app.route("/catalog/<name>")
-def view_catalog(name: str) -> str:
+def view_catalog(name: str) -> str | tuple[str, int]:
     """View a specific catalog."""
+    # Validate catalog name to prevent path traversal
+    if not validate_catalog_name(name):
+        logger.warning("Invalid catalog name requested: %s", name)
+        return render_template("error"), 400
+
+    # Validate and sanitize input parameters
     page = request.args.get("page", 1, type=int)
+    page = max(1, page)  # Ensure page is at least 1
     query = request.args.get("q", "")
     view = request.args.get("view", "table")
-    per_page = 100
+    if view not in ALLOWED_VIEWS:
+        view = "table"
 
     try:
         metadata = db_get_metadata(name)
-    except Exception:
-        return render_template("error")
+    except (FileNotFoundError, sqlite3.Error) as e:
+        logger.warning("Catalog not found or error: %s - %s", name, e)
+        return render_template("error"), 404
 
     if query:
-        # Convert * to SQL LIKE pattern
-        pattern = "%" + query.replace("*", "%") + "%"
+        pattern = escape_sql_like(query)
         all_files = get_catalog_by_pattern(name, pattern)
     else:
         all_files = db_get_catalog(name)
 
     total_files = len(all_files)
     total_size = sum(f[3] for f in all_files)  # size is at index 3
-    total_pages = (total_files + per_page - 1) // per_page
+    total_pages = max(1, (total_files + DEFAULT_PAGE_SIZE - 1) // DEFAULT_PAGE_SIZE)
 
-    # For tree view, show all files (no pagination)
+    # Ensure page is within valid range
+    page = min(page, total_pages)
+
+    # For tree view, limit files to prevent memory issues
+    tree_warning = ""
     if view == "tree":
-        files = [format_file_item(f) for f in all_files]
+        if total_files > MAX_TREE_VIEW_FILES:
+            tree_warning = (
+                f"Showing first {MAX_TREE_VIEW_FILES:,} of {total_files:,} files. "
+                "Use search to filter."
+            )
+            files = [format_file_item(f) for f in all_files[:MAX_TREE_VIEW_FILES]]
+        else:
+            files = [format_file_item(f) for f in all_files]
         tree_html = build_tree_html(files)
     else:
         # Paginate for table view
-        start = (page - 1) * per_page
-        end = start + per_page
+        start = (page - 1) * DEFAULT_PAGE_SIZE
+        end = start + DEFAULT_PAGE_SIZE
         files = [format_file_item(f) for f in all_files[start:end]]
         tree_html = ""
 
@@ -753,6 +826,7 @@ def view_catalog(name: str) -> str:
         query=query,
         view=view,
         tree_html=tree_html,
+        tree_warning=tree_warning,
     )
 
 
@@ -764,20 +838,20 @@ def search() -> str:
 
     if query:
         catalogs = file_get_catalogs()
-        pattern = "%" + query.replace("*", "%") + "%"
+        pattern = escape_sql_like(query)
 
         for catalog in catalogs:
             catalog_name = str(catalog["name"])
             matches = get_catalog_by_pattern(catalog_name, pattern)
             results.extend(
                 format_file_item(match, catalog_name)
-                for match in matches[:100]  # Limit per catalog
+                for match in matches[:MAX_SEARCH_RESULTS_PER_CATALOG]
             )
 
     return render_template(
         "search",
         query=query,
-        results=results[:500],  # Total limit
+        results=results[:MAX_SEARCH_RESULTS_TOTAL],
         total_results=len(results),
     )
 
@@ -792,6 +866,10 @@ def api_catalogs() -> Response:
 @app.route("/api/catalog/<name>")
 def api_catalog(name: str) -> Response | tuple[Response, int]:
     """API endpoint to get catalog contents."""
+    # Validate catalog name
+    if not validate_catalog_name(name):
+        return jsonify({"error": "Invalid catalog name"}), 400
+
     try:
         metadata = db_get_metadata(name)
         files = db_get_catalog(name)
@@ -801,8 +879,9 @@ def api_catalog(name: str) -> Response | tuple[Response, int]:
                 "files": [format_file_item(f) for f in files],
             }
         )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 404
+    except (FileNotFoundError, sqlite3.Error) as e:
+        logger.warning("API catalog error: %s - %s", name, e)
+        return jsonify({"error": "Catalog not found"}), 404
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8080, debug: bool = False) -> None:
@@ -811,11 +890,14 @@ def run_server(host: str = "127.0.0.1", port: int = 8080, debug: bool = False) -
     Args:
         host: Host to bind to.
         port: Port to listen on.
-        debug: Enable debug mode.
+        debug: Enable debug mode (do not use in production).
     """
+    if debug:
+        logger.warning("Debug mode enabled - do not use in production!")
     print(f"Starting Catho Web UI at http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":
-    run_server(debug=True)
+    # Default to non-debug mode for safety
+    run_server()
