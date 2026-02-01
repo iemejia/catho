@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal, TypeAlias
 
 # Type alias for hash types (using TypeAlias for cross-module import compatibility)
-HashType: TypeAlias = Literal["sha1", "None"]  # noqa: UP040
+HashType: TypeAlias = Literal["sha256", "None"]  # noqa: UP040
 
 
 def file_touch_dir(path: str | Path) -> None:
@@ -78,7 +78,7 @@ def sizeof_fmt(num: float) -> str:
 def file_hash(
     filename: str | Path,
     block_size: int,
-    hash_type: HashType = "sha1",
+    hash_type: HashType = "sha256",
 ) -> str:
     """Calculate the hash for a file.
 
@@ -87,13 +87,13 @@ def file_hash(
     Args:
         filename: Path to the file to hash.
         block_size: Size of blocks to read at a time.
-        hash_type: Hash algorithm to use ('sha1' or 'None').
+        hash_type: Hash algorithm to use ('sha256' or 'None').
 
     Returns:
         Hexadecimal hash string, or empty string if hash_type is 'None'.
     """
-    if hash_type == "sha1":
-        h = hashlib.sha1()
+    if hash_type == "sha256":
+        h = hashlib.sha256()
         with Path(filename).open("rb") as f:
             while data := f.read(block_size):
                 h.update(data)

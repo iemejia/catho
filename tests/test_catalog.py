@@ -43,7 +43,7 @@ class TestCreateCatalog:
         sample_files: Path,
     ) -> None:
         """Test creating a new catalog."""
-        result = create_catalog("test", str(sample_files), "sha1")
+        result = create_catalog("test", str(sample_files), "sha256")
         assert result is True
         # Catalog file should exist
         assert (temp_catho_dir / "test.db").exists()
@@ -54,8 +54,8 @@ class TestCreateCatalog:
         sample_files: Path,
     ) -> None:
         """Test that creating existing catalog without force returns False."""
-        create_catalog("test", str(sample_files), "sha1")
-        result = create_catalog("test", str(sample_files), "sha1")
+        create_catalog("test", str(sample_files), "sha256")
+        result = create_catalog("test", str(sample_files), "sha256")
         assert result is False
 
     def test_existing_catalog_with_force(
@@ -64,8 +64,8 @@ class TestCreateCatalog:
         sample_files: Path,
     ) -> None:
         """Test that creating existing catalog with force succeeds."""
-        create_catalog("test", str(sample_files), "sha1")
-        result = create_catalog("test", str(sample_files), "sha1", force=True)
+        create_catalog("test", str(sample_files), "sha256")
+        result = create_catalog("test", str(sample_files), "sha256", force=True)
         assert result is True
 
 
@@ -79,7 +79,7 @@ class TestDbOperations:
         assert len(metadata) == 7
         assert metadata["name"] == test_catalog
         assert metadata["version"] == "1"
-        assert metadata["hash"] == "sha1"
+        assert metadata["hash"] == "sha256"
 
     def test_get_catalog(self, test_catalog: str) -> None:
         """Test getting catalog contents."""
@@ -97,8 +97,8 @@ class TestFileGetCatalogs:
         sample_files: Path,
     ) -> None:
         """Test listing available catalogs."""
-        create_catalog("cat1", str(sample_files), "sha1")
-        create_catalog("cat2", str(sample_files), "sha1")
+        create_catalog("cat1", str(sample_files), "sha256")
+        create_catalog("cat2", str(sample_files), "sha256")
         catalogs = file_get_catalogs()
         names = [c["name"] for c in catalogs]
         assert "cat1" in names
@@ -153,8 +153,8 @@ class TestFindInCatalogs:
         sample_files: Path,
     ) -> None:
         """Test finding in multiple catalogs."""
-        create_catalog("cat1", str(sample_files), "sha1")
-        create_catalog("cat2", str(sample_files), "sha1")
+        create_catalog("cat1", str(sample_files), "sha256")
+        create_catalog("cat2", str(sample_files), "sha256")
         items = find_in_catalogs("file1.txt", ["cat1", "cat2"])
         # Should find in both catalogs
         files = [f for _, files in items.items() for f in files]
@@ -170,7 +170,7 @@ class TestUpdateCatalog:
         sample_files: Path,
     ) -> None:
         """Test that update adds new files."""
-        create_catalog("test", str(sample_files), "sha1")
+        create_catalog("test", str(sample_files), "sha256")
         # Add a new file
         (sample_files / "new_file.txt").write_text("new content")
         update_catalog("test", str(sample_files))
@@ -189,7 +189,7 @@ class TestFileCatalogOperations:
         sample_files: Path,
     ) -> None:
         """Test removing a catalog file."""
-        create_catalog("to_delete", str(sample_files), "sha1")
+        create_catalog("to_delete", str(sample_files), "sha256")
         assert (temp_catho_dir / "to_delete.db").exists()
         catho.file_rm_catalog_file(["to_delete"])
         assert not (temp_catho_dir / "to_delete.db").exists()

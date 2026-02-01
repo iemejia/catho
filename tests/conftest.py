@@ -58,6 +58,6 @@ def test_catalog(
     import catho
 
     catalog_name = "test_catalog"
-    catho.create_catalog(catalog_name, str(sample_files), "sha1")
+    catho.create_catalog(catalog_name, str(sample_files), "sha256")
 
     yield catalog_name

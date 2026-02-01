@@ -113,20 +113,22 @@ class TestSizeofFmt:
 class TestFileHash:
     """Tests for file_hash function."""
 
-    def test_sha1_empty_file(self, tmp_path: Path) -> None:
-        """Test SHA1 hash of empty file."""
+    def test_sha256_empty_file(self, tmp_path: Path) -> None:
+        """Test SHA256 hash of empty file."""
         empty_file = tmp_path / "empty"
         empty_file.write_bytes(b"")
-        result = file_hash(empty_file, 1048576, "sha1")
-        # SHA1 of empty string
-        assert result == "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+        result = file_hash(empty_file, 1048576, "sha256")
+        # SHA256 of empty string
+        assert (
+            result == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        )
 
-    def test_sha1_with_content(self, tmp_path: Path) -> None:
-        """Test SHA1 hash of file with content."""
+    def test_sha256_with_content(self, tmp_path: Path) -> None:
+        """Test SHA256 hash of file with content."""
         test_file = tmp_path / "test.txt"
         test_file.write_text("Hello World")
-        result = file_hash(test_file, 1048576, "sha1")
-        assert len(result) == 40  # SHA1 hex digest length
+        result = file_hash(test_file, 1048576, "sha256")
+        assert len(result) == 64  # SHA256 hex digest length
 
     def test_none_hash_type(self, tmp_path: Path) -> None:
         """Test that None hash type returns empty string."""

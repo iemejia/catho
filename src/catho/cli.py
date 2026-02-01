@@ -70,9 +70,9 @@ def create_parser() -> argparse.ArgumentParser:
     add_parser.add_argument(
         "-H",
         "--hash-type",
-        help="hash function (sha1 (default), None)",
+        help="hash function (sha256 (default), None)",
         action="store",
-        default="sha1",
+        default="sha256",
     )
     add_parser.add_argument(
         "-c",

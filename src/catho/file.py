@@ -10,7 +10,7 @@ from typing import Literal, TypeAlias
 from catho.utils import file_hash, get_file_info
 
 # Type aliases for export (using TypeAlias for cross-module import compatibility)
-HashType: TypeAlias = Literal["sha1", "None"]  # noqa: UP040
+HashType: TypeAlias = Literal["sha256", "None"]  # noqa: UP040
 FileItem: TypeAlias = tuple[int | None, str, int, int, str, str | None]  # noqa: UP040
 
 logger = logging.getLogger("catho")

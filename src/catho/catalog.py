@@ -32,7 +32,7 @@ from catho.file import (
 logger = logging.getLogger("catho")
 
 # Valid hash types
-VALID_HASH_TYPES = ["sha1", "None"]
+VALID_HASH_TYPES = ["sha256", "None"]
 
 # Number of files read and inserted in the database per iteration
 MAX_FILES_ITER = 1024
@@ -314,7 +314,7 @@ def update_catalog(name: str, path: str) -> None:
         db_delete_catalog(name, deleted_ids)
 
     # Add new or modified files
-    hash_type: HashType = m.get("hash", "sha1")  # type: ignore[assignment]
+    hash_type: HashType = m.get("hash", "sha256")  # type: ignore[assignment]
     filesubsets = path_block_iterator(fullpath, MAX_FILES_ITER)
     for files in filesubsets:
         params = _build_select_catalog_cond_params(files)
@@ -390,7 +390,7 @@ def scan_catalogs(name: str) -> dict[str, dict[str, list[tuple[Any, ...]]]]:
         # TODO: Implement directory scanning
     else:
         logger.info("scanning file: %s", name)
-        hashed_files = [file_getfile_as_item(name, BLOCK_SIZE, "sha1")]
+        hashed_files = [file_getfile_as_item(name, BLOCK_SIZE, "sha256")]
         result[name] = find_hash_in_catalogs(hashed_files)
 
     return result
