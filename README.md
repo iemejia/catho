@@ -1,69 +1,152 @@
 # Catho
 
-**Catho** is a catalog utility inspired by the awesome Robert
-Vasicek's [Cathy](http://www.mtg.sk/rva/) project. The idea is to have
-an util to save the catalog of the different files that you have in
-different media, volumes, network places, etc, that you can search,
-and update locally without having to put or connect to such media.
+[![CI](https://github.com/iemejia/catho/actions/workflows/ci.yml/badge.svg)](https://github.com/iemejia/catho/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/catho.svg)](https://badge.fury.io/py/catho)
+[![Python versions](https://img.shields.io/pypi/pyversions/catho.svg)](https://pypi.org/project/catho/)
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
-Or put in other words, it's my excuse to hack some python. Yes, yes I
-promised to do it in haskell, but i don't have time now :P.
+**Catho** is a command-line file catalog manager inspired by Robert Vasicek's
+[Cathy](http://www.mtg.sk/rva/) project. It allows you to index and search files
+across different media, volumes, and network locations without having physical
+access to them.
 
-Installation
-----------
+## Features
 
-TODO
+- **Index files** from any directory, including external drives and network shares
+- **Search catalogs** locally without needing access to the original media
+- **SHA-1 hashing** for duplicate file detection
+- **SQLite storage** for fast, portable catalog databases
+- **Pattern matching** with wildcards and regex support
 
-Requirements
-------------
+## Installation
 
-For python < 2.7
-```pip install argparse```
+### From PyPI (recommended)
 
-Use
-----------
+```bash
+pip install catho
+```
 
-    # Prepare catalog folder
-    catho init
+### From source
 
-    # Add a catalog with alias
-    catho add name path  
+```bash
+git clone https://github.com/iemejia/catho.git
+cd catho
+pip install -e .
+```
 
-    # Remove a catalog
-    catho rm name
+### Development installation
 
-    # Search for filenames matching with a pattern (ex. *.zip, c*.*) in some catalogs or in all if none is provided
+```bash
+pip install -e ".[dev]"
+pre-commit install
+```
 
-    catho find pattern [catalog1] [catalog2] [catalogn]
+## Usage
 
-    # List all catalogs
-    catho ls
+### Create a catalog
 
-    # Find apparently existing files from dir in the catalog
-    catho scan name dir
+```bash
+# Index a directory with a catalog name
+catho add my-usb-drive /media/usb-drive
 
-    # Import existing cathy catalogs to the catho format
-    catho import file.cat
-    
-Developing
-----------
+# Index without calculating file hashes (faster)
+catho add my-backup /backup/folder -H None
+```
 
-The catalog correspond to a simple sqlite3 database, for more info
-about the catalog structure, see the [docs/catalog.sql](https://github.com/iemejia/catho/blob/master/catho/docs/catalog.sql) file. Catalogs
-are saved automatically in the ~/.catho folder.
+### List catalogs
 
-We would like to create a sort of simple minimalist catalog system so
-people can create nicer tools based on the catho system (e.g. GUI,
-web, etc).
+```bash
+# List all catalogs
+catho ls
 
-Continuous integration is running automatically via
-[travis-ci](https://travis-ci.org/iemejia/catho) . The current project
-status is:
-[![Build Status](https://travis-ci.org/iemejia/catho.png?branch=master)](https://travis-ci.org/iemejia/catho)
+# Show details for a specific catalog
+catho ls my-usb-drive
+```
 
-Collaboration
-----------
+### Search for files
 
-Contributions are welcome, but please add new unit tests to test your
-changes and/or features.  Also, please try to make changes platform
-independent and backward compatible.
+```bash
+# Search for files matching a pattern (supports * wildcard)
+catho find "*.mp3"
+
+# Search in specific catalogs
+catho find "report*.pdf" my-usb-drive my-backup
+
+# Search all catalogs for files containing "photo"
+catho find "*photo*"
+```
+
+### Update a catalog
+
+```bash
+# Update an existing catalog (adds new files, removes deleted ones)
+catho add my-usb-drive /media/usb-drive --continue
+```
+
+### Remove a catalog
+
+```bash
+catho rm my-old-catalog
+```
+
+### Scan for duplicates
+
+```bash
+# Check if a file exists in any catalog
+catho scan /path/to/file.txt
+```
+
+## Catalog Storage
+
+Catalogs are stored as SQLite databases in `~/.catho/`. Each catalog contains:
+
+- File names and paths (relative to the indexed root)
+- File sizes and modification dates
+- SHA-1 hashes (optional) for duplicate detection
+
+For more details about the catalog structure, see
+[docs/catalog.sql](catho/docs/catalog.sql).
+
+## Development
+
+### Running tests
+
+```bash
+pytest
+```
+
+### Running tests with coverage
+
+```bash
+pytest --cov=src/catho --cov-report=html
+```
+
+### Linting and formatting
+
+```bash
+ruff check src tests
+ruff format src tests
+mypy src/catho
+```
+
+### Building the package
+
+```bash
+pip install build
+python -m build
+```
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass and linting is clean
+5. Submit a pull request
+
+## License
+
+This project is licensed under the GNU Lesser General Public License v3.0 - see
+the [LICENSE](LICENSE) file for details.
